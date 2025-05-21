@@ -4,7 +4,7 @@ import EnquiryNow from "./components/enquiryNow.tsx";
 import SignUpForm from "./auth/signup.tsx";
 import Login from "./auth/login.tsx";
 import HomePage from "./pages/homepage/homePage.tsx";
-import ForgotPassword from "./components/forgotPassword.tsx";
+import ForgotPassword from "./auth/forgotPassword.tsx";
 import Dashboard from "./pages/admin/dashboard/dashboard.tsx";
 import ErrorHandling from "./pages/admin/dashboard/settingsErrorBoundry.tsx";
 import StudyMaterial from "./pages/admin/studyMaterial.tsx";
@@ -21,6 +21,8 @@ import StudentDashoard from "./pages/student/studentDashboard.tsx";
 import StudentCompletedTest from "./pages/student/completedTests.tsx";
 import CollegeDashboard from "./pages/college/collegeDashboard.tsx";
 import TestScreen from "./pages/student/newtest.tsx";
+import BatchStudents from "./pages/admin/dashboard/viewBatchStudents.tsx";
+import UpComingTest from "./pages/admin/upComingTests.tsx";
 
 const App: React.FC = () => {
   return (
@@ -46,11 +48,14 @@ const App: React.FC = () => {
         <Route path="/dashboard/CollageStudents" element={<CollageStudents />} />
         <Route path="/dashboard/unassigned" element={<UnassignedStudents />} />
         <Route path="/dashboard/CompletedTest" element={<CompletedTest />} />
+        <Route path="/dashboard/batch-students/:batchId" element={<BatchStudents />} />
+        <Route path="/dashboard/upcomingtest" element={<UpComingTest />} />
+
 
         {/* Student */}
 
         <Route path="/student/dashboard" element={<StudentDashoard />} />
-        <Route path="/student/TestScreen" element={<TestScreen />} />
+        <Route path="/student/TestScreen/:testId" element={<TestScreen />} />
         <Route path="/student/CompletedTest" element={<StudentCompletedTest />} />
 
         {/* Collage */}

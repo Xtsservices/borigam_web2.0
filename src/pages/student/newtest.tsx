@@ -10,27 +10,32 @@ import {
   Row,
   Col,
   Space,
-  Tag,
   Spin,
   Divider,
+  Checkbox,
 } from "antd";
 import StudentLayoutWrapper from "../../components/studentlayout/studentlayoutWrapper";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import TextArea from "antd/es/input/TextArea";
+import { useParams } from "react-router-dom";
 
 const { Title, Text } = Typography;
 
 interface Option {
   id: number;
   option_text: string;
-  is_correct: boolean;
+  option_image: string | null;
+  is_correct?: boolean;
 }
 
 interface Question {
-  image: string | undefined;
   id: number;
   name: string;
   type: string;
+  image: string | null;
+  total_marks: number; // Add this
+  negative_marks: number; // Add this
   options: Option[];
 }
 
@@ -43,13 +48,21 @@ interface Test {
   end_date: string;
   course_id: number | null;
   course_name: string | null;
-  result_id: number | null;
-  total_questions: number | null;
-  attempted: number | null;
-  correct: number | null;
-  wrong: number | null;
-  final_score: string | null;
-  final_result: string | null;
+}
+
+// interface TestResult {
+//   totalQuestions: number;
+//   attempted: number;
+//   correct: number;
+//   wrong: number;
+//   finalScore: string;
+//   finalResult: string;
+//   message: string;
+// }
+interface SelectedAnswer {
+  optionIds?: number[]; // For multiple-choice questions
+  optionId?: number | null; // For single-select questions
+  text?: string | null;
 }
 
 const TestScreen: React.FC = () => {
@@ -57,103 +70,170 @@ const TestScreen: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{
-    [key: number]: { optionId: number | null; text: string | null };
+    [key: number]: SelectedAnswer;
   }>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [testId, setTestId] = useState<number | null>(null);
+  const [test] = useState<Test | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
-  const [openTests, setOpenTests] = useState<Test[]>([]);
-  const [selectedTest, setSelectedTest] = useState<Test | null>(null);
-  const [showTestList, setShowTestList] = useState(false);
+  // const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [timerActive, setTimerActive] = useState(true);
   const [seenQuestions, setSeenQuestions] = useState<number[]>([]);
+  const [testStarted, setTestStarted] = useState(false);
+  const { testId } = useParams<{ testId: string }>();
+  const [isFinalModalVisible, setIsFinalModalVisible] = useState(false);
+  const [finalResult, setFinalResult] = useState<any>(null);
+  const testDuration = localStorage.getItem("testDuration");
 
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const axiosConfig = { headers: { token: token } };
+  const axiosConfig = { headers: { token: token || "" } };
 
+  const STORAGE_KEY = `test_answers_${testId}`;
+
+  // Prevent context menu and tab switching
   useEffect(() => {
-    fetchTestStatus();
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleBlur = () => {
+      message.warning("Tab switching is not allowed!");
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("blur", handleBlur);
+    };
   }, []);
 
-  // Timer effect
+  // Timer effect with auto-submit
   useEffect(() => {
     let timer: NodeJS.Timeout;
+
     if (timerActive && timeLeft > 0) {
       timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
+        setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
-    } else if (timeLeft === 0 && timerActive) {
-      // Auto submit when time runs out
-      handleAutoSubmit();
+    } else if (timerActive && timeLeft === 0 && testStarted) {
+      // Time's up, auto-submit the test
+      message.warning("Time's up! Submitting your test...");
+      submitFinalResult();
     }
-    return () => clearTimeout(timer);
-  }, [timeLeft, timerActive]);
 
-  const handleAutoSubmit = async () => {
-    setTimerActive(false);
-    message.warning("Time's up! Submitting your test...");
-    await submitTest();
-  };
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [timeLeft, timerActive, testStarted]);
 
-  const fetchTestStatus = () => {
-    setLoading(true);
-    axios
-      .get(
-        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
-        axiosConfig
-      )
-      .then((response) => {
-        console.log("Test status response:", response.data);
-        const openTestsData = response.data?.data?.tests?.openTests || [];
-        setOpenTests(openTestsData);
+  // Load test and questions
+  useEffect(() => {
+    const loadTest = async () => {
+      try {
+        setLoading(true);
 
-        if (openTestsData.length === 1) {
-          handleTestSelect(openTestsData[0]);
-        } else if (openTestsData.length > 1) {
-          setShowTestList(true);
-        } else {
-          message.info("No open tests available at this time");
+        if (!testId) {
+          throw new Error("Test ID not found");
         }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching test status:", error);
-        setLoading(false);
-      });
-  };
 
-  const handleTestSelect = (test: Test) => {
-    setSelectedTest(test);
-    setTestId(test.test_id);
-    setLoading(true);
-    setShowTestList(false);
+        const submissionsResponse = await axios.get(
+          `http://13.233.33.133:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
+          axiosConfig
+        );
 
-    axios
-      .get(
-        `http://localhost:3001/api/question/viewTestByID?id=${test.test_id}`,
-        axiosConfig
-      )
-      .then((response) => {
-        setQuestions(response.data.data.questions || []);
-        // Initialize selected answers with null values
-        const initialAnswers: typeof selectedAnswers = {};
-        response.data.data.questions.forEach((q: Question) => {
-          initialAnswers[q.id] = { optionId: null, text: null };
+        const submissions = submissionsResponse.data?.submissions || [];
+        // Set a default duration if not available from API (e.g., 30 minutes)
+        const durationInMinutes = testDuration ? parseInt(testDuration) : 0;
+        setTimeLeft(durationInMinutes * 60);
+
+        const questionsData: Question[] = [];
+
+        if (questionsData.length > 0) {
+          setSeenQuestions([questionsData[0].id]);
+        }
+        for (const submission of submissions) {
+          const questionResponse = await axios.get(
+            `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
+            axiosConfig
+          );
+          questionsData.push(questionResponse.data.question);
+        }
+
+        setQuestions(questionsData);
+
+        // Try to load answers from localStorage
+        const savedAnswers = localStorage.getItem(STORAGE_KEY);
+        let initialAnswers: typeof selectedAnswers = {};
+
+        if (savedAnswers) {
+          try {
+            initialAnswers = JSON.parse(savedAnswers);
+          } catch (e) {
+            console.error("Failed to parse saved answers", e);
+          }
+        }
+
+        // Initialize any missing answers
+        questionsData.forEach((q: Question) => {
+          if (!initialAnswers[q.id]) {
+            initialAnswers[q.id] = { optionId: null, text: null };
+          }
         });
+
         setSelectedAnswers(initialAnswers);
-        // Set timer based on test duration (convert minutes to seconds)
-        setTimeLeft(test.duration * 60);
+        setTestStarted(true);
         setTimerActive(true);
+      } catch (error) {
+        console.error("Error loading test:", error);
+        message.error("Failed to load test");
+        navigate("/student/dashboard");
+      } finally {
         setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching questions:", error);
-        setLoading(false);
-      });
-  };
+      }
+    };
+
+    loadTest();
+  }, [testId]);
+
+  useEffect(() => {
+    if (Object.keys(selectedAnswers).length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAnswers));
+    }
+  }, [selectedAnswers]);
+
+const submitFinalResult = async () => {
+  if (!testId) return;
+  
+  try {
+    setSubmitting(true);
+    // Auto-save the current answer before submitting
+    const currentQ = questions[currentQuestionIndex];
+    if (currentQ) {
+      const answer = selectedAnswers[currentQ.id];
+      if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
+        await saveAnswerToServer(currentQ.id, answer);
+      }
+    }
+    
+    const response = await axios.get(
+      `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+      axiosConfig
+    );
+    setFinalResult(response.data.result);
+    setIsFinalModalVisible(true);
+    
+    // Clean up localStorage
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("testDuration");
+    
+    setTimerActive(false);
+  } catch (error) {
+    console.error("Failed to submit final result:", error);
+    message.error("Failed to submit final result");
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -163,49 +243,64 @@ const TestScreen: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
-  const submitTest = async () => {
+  const saveAnswerToServer = async (
+    questionId: number,
+    answer: SelectedAnswer
+  ) => {
     if (!testId) return;
 
-    setSubmitting(true);
-    const payload = {
-      test_id: testId,
-      answers: Object.entries(selectedAnswers).map(([questionId, answer]) => ({
-        question_id: parseInt(questionId),
-        option_id: answer.optionId,
-        text: answer.text,
-      })),
-    };
-
     try {
+      const question = questions.find((q) => q.id === questionId);
+      if (!question) return;
+
+      // Determine the question type
+      const isMultipleChoice = question.type === "multiple_choice";
+      const isSingleChoice = question.type === "radio";
+      const isText = question.type === "text";
+
+      // Prepare the answer payload
+      const answerPayload: any = {
+        question_id: questionId,
+      };
+
+      if (isText) {
+        answerPayload.text = answer.text || "";
+      } else {
+        answerPayload.text = null;
+        if (isMultipleChoice) {
+          answerPayload.option_id = answer.optionIds || [];
+        } else if (isSingleChoice) {
+          answerPayload.option_id = answer.optionId || null;
+        }
+      }
+
+      const payload = {
+        test_id: parseInt(testId),
+        answers: [answerPayload],
+      };
+
       const response = await axios.post(
-        "http://localhost:3001/api/testsubmission/submitTest",
+        "http://13.233.33.133:3001/api/testsubmission/submitTest",
         payload,
         axiosConfig
       );
-      setTestResult(response.data.finalSummary);
-      setIsModalVisible(true);
-      setTimerActive(false);
-    } catch (error) {
-      message.error("Error submitting test");
-      console.error("Submission error:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
-  const saveAnswerToServer = async (questionId: number, answer: any) => {
-    try {
-      await axios.post(
-        "http://localhost:3001/api/testsubmission/submitTest",
-        {
-          question_id: questionId,
-          option_id: answer.optionId,
-          text: answer.text,
-        },
-        axiosConfig
-      );
+      // Check if all questions are answered
+      if (response.data.pendingsubmission?.unanswered === 1) {
+        // Submit final result using GET
+        const finalResponse = await axios.get(
+          `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+          axiosConfig
+        );
+        setFinalResult(finalResponse.data.result);
+        setIsFinalModalVisible(true);
+      }
+
+      return response.data;
     } catch (error) {
-      console.error("Failed to save answer", error);
+      console.error("Failed to save answer:", error);
+      message.error("Failed to save answer");
+      throw error;
     }
   };
 
@@ -213,34 +308,81 @@ const TestScreen: React.FC = () => {
     const currentQ = questions[currentQuestionIndex];
     const answer = selectedAnswers[currentQ.id];
 
-    if (answer.optionId || answer.text) {
-      await saveAnswerToServer(currentQ.id, answer); // ✅ save answer silently
+    // Submit answer if any option is selected or text is entered
+    if (answer?.optionId || answer?.optionIds || answer?.text) {
+      await saveAnswerToServer(currentQ.id, answer);
     }
 
     if (!seenQuestions.includes(currentQ.id)) {
       setSeenQuestions([...seenQuestions, currentQ.id]);
     }
 
-    // ✅ Just move to the next question without submitting
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      // Check if all questions are answered
+      const unanswered = questions.filter(
+        (q) =>
+          !selectedAnswers[q.id]?.optionId &&
+          !selectedAnswers[q.id]?.optionIds?.length &&
+          !selectedAnswers[q.id]?.text
+      ).length;
+
+      if (unanswered === 1) {
+        // All questions answered - submit final result using GET
+        try {
+          setSubmitting(true);
+          const response = await axios.get(
+            `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+            axiosConfig
+          );
+          setFinalResult(response.data.result);
+          setIsFinalModalVisible(true);
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.error("Failed to submit final result:", error);
+          message.error("Failed to submit final result");
+        } finally {
+          setSubmitting(false);
+        }
+      } else {
+        // Show regular completion modal
+        setIsModalVisible(true);
+        setTimerActive(false);
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
   };
 
   const handlePrevious = () => {
+    const currentQ = questions[currentQuestionIndex];
+
+    // Mark current question as seen
+    if (!seenQuestions.includes(currentQ.id)) {
+      setSeenQuestions([...seenQuestions, currentQ.id]);
+    }
+
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
-  const handleModalOk = () => {
-    setIsModalVisible(false);
-    navigate("/student/dashboard");
+  const handleQuestionNavigation = (index: number) => {
+    const questionId = questions[index].id;
+    if (!seenQuestions.includes(questionId)) {
+      setSeenQuestions([...seenQuestions, questionId]);
+    }
+    setCurrentQuestionIndex(index);
   };
 
-  const formatDate = (timestamp: string) => {
-    return new Date(parseInt(timestamp) * 1000).toLocaleString();
-  };
+  useEffect(() => {
+    return () => {
+      // Only clear if test is not completed
+      if (!isModalVisible) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    };
+  }, [isModalVisible]);
 
   const currentQuestion: Question | undefined = questions[currentQuestionIndex];
 
@@ -249,78 +391,12 @@ const TestScreen: React.FC = () => {
       <StudentLayoutWrapper pageTitle="Test">
         <div style={{ padding: "20px", textAlign: "center" }}>
           <Spin size="large" />
-          <Text>Loading...</Text>
+          <Text>Loading test information...</Text>
         </div>
       </StudentLayoutWrapper>
     );
   }
-
-  if (showTestList) {
-    return (
-      <StudentLayoutWrapper pageTitle="Available Tests">
-        <div style={{ padding: "20px" }}>
-          <Title
-            level={2}
-            style={{ textAlign: "center", marginBottom: "24px" }}
-          >
-            Available Tests
-          </Title>
-          <Row gutter={[16, 16]}>
-            {openTests.map((test) => (
-              <Col xs={24} sm={12} md={8} lg={6} key={test.test_id}>
-                <Card
-                  title={test.test_name}
-                  bordered={true}
-                  hoverable
-                  style={{ height: "100%" }}
-                  actions={[
-                    <Button
-                      type="primary"
-                      onClick={() => handleTestSelect(test)}
-                    >
-                      Start Test
-                    </Button>,
-                  ]}
-                >
-                  <Space direction="vertical" size="middle">
-                    <div>
-                      <Text strong>Duration: </Text>
-                      <Text>{test.duration} minutes</Text>
-                    </div>
-                    <div>
-                      <Text strong>Course: </Text>
-                      <Text>{test.course_name || "General"}</Text>
-                    </div>
-                    <div>
-                      <Text strong>Available Until: </Text>
-                      <Text>{formatDate(test.end_date)}</Text>
-                    </div>
-                    {test.total_questions && (
-                      <div>
-                        <Text strong>Questions: </Text>
-                        <Text>{test.total_questions}</Text>
-                      </div>
-                    )}
-                    {test.final_result && (
-                      <Tag
-                        color={
-                          test.final_result === "Pass" ? "green" : "volcano"
-                        }
-                      >
-                        {test.final_result}
-                      </Tag>
-                    )}
-                  </Space>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </div>
-      </StudentLayoutWrapper>
-    );
-  }
-
-  if (openTests.length === 0) {
+  if (!testStarted && !loading && (!test || questions.length === 0)) {
     return (
       <StudentLayoutWrapper pageTitle="Test">
         <div
@@ -342,22 +418,22 @@ const TestScreen: React.FC = () => {
             }}
           >
             <Title level={2} style={{ color: "#fa8c16" }}>
-              No Open Tests Available
+              No Tests Available
             </Title>
             <Text type="secondary">
+              There are currently no tests available for you to take.
+              <br />
               Please check back later or contact your instructor.
             </Text>
+            <div style={{ marginTop: 20 }}>
+              <Button
+                type="primary"
+                onClick={() => navigate("/student/dashboard")}
+              >
+                Return to Dashboard
+              </Button>
+            </div>
           </Card>
-        </div>
-      </StudentLayoutWrapper>
-    );
-  }
-
-  if (!testId || questions.length === 0) {
-    return (
-      <StudentLayoutWrapper pageTitle="Test">
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <Text>No questions available for this test</Text>
         </div>
       </StudentLayoutWrapper>
     );
@@ -369,7 +445,6 @@ const TestScreen: React.FC = () => {
         <Row gutter={16}>
           <Col xs={24} lg={18}>
             <Card>
-              <Title level={2}>{selectedTest?.test_name}</Title>
               <div
                 style={{
                   display: "flex",
@@ -408,28 +483,111 @@ const TestScreen: React.FC = () => {
                     }}
                   />
                 )}
-                <Radio.Group
-                  onChange={(e) =>
-                    setSelectedAnswers({
-                      ...selectedAnswers,
-                      [currentQuestion.id]: {
-                        optionId: e.target.value,
-                        text: null,
-                      },
-                    })
-                  }
-                  value={selectedAnswers[currentQuestion.id]?.optionId || null}
-                >
-                  {currentQuestion?.options.map((option) => (
-                    <Radio
-                      key={option.id}
-                      value={option.id}
-                      style={{ display: "block", margin: "10px 0" }}
-                    >
-                      {option.option_text}
-                    </Radio>
-                  ))}
-                </Radio.Group>
+
+                {currentQuestion?.type === "text" ? (
+                  <TextArea
+                    placeholder="Type your answer here..."
+                    value={selectedAnswers[currentQuestion.id]?.text || ""}
+                    onChange={(e) =>
+                      setSelectedAnswers({
+                        ...selectedAnswers,
+                        [currentQuestion.id]: {
+                          optionId: null,
+                          text: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ marginTop: 16 }}
+                    rows={4}
+                  />
+                ) : currentQuestion?.type === "radio" ? (
+                  <Radio.Group
+                    onChange={(e) =>
+                      setSelectedAnswers({
+                        ...selectedAnswers,
+                        [currentQuestion.id]: {
+                          optionId: e.target.value,
+                          text: null,
+                        },
+                      })
+                    }
+                    value={
+                      selectedAnswers[currentQuestion.id]?.optionId || null
+                    }
+                  >
+                    {currentQuestion?.options.map((option) => (
+                      <Radio
+                        key={option.id}
+                        value={option.id}
+                        style={{ display: "block", margin: "10px 0" }}
+                      >
+                        {option.option_text}
+                        {option.option_image && (
+                          <img
+                            src={option.option_image}
+                            alt="Option visual"
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "100px",
+                              marginLeft: "10px",
+                            }}
+                          />
+                        )}
+                      </Radio>
+                    ))}
+                  </Radio.Group>
+                ) : currentQuestion?.type === "multiple_choice" ? (
+                  <div>
+                    {currentQuestion?.options.map((option) => (
+                      <div key={option.id} style={{ margin: "10px 0" }}>
+                        <Checkbox
+                          checked={
+                            selectedAnswers[
+                              currentQuestion.id
+                            ]?.optionIds?.includes(option.id) || false
+                          }
+                          onChange={(e) => {
+                            const currentSelected =
+                              selectedAnswers[currentQuestion.id]?.optionIds ||
+                              [];
+                            let newOptionIds;
+
+                            if (e.target.checked) {
+                              newOptionIds = [...currentSelected, option.id];
+                            } else {
+                              newOptionIds = currentSelected.filter(
+                                (id) => id !== option.id
+                              );
+                            }
+
+                            setSelectedAnswers({
+                              ...selectedAnswers,
+                              [currentQuestion.id]: {
+                                ...selectedAnswers[currentQuestion.id],
+                                optionIds: newOptionIds,
+                                optionId: null,
+                                text: null,
+                              },
+                            });
+                          }}
+                        >
+                          {option.option_text}
+                          {option.option_image && (
+                            <img
+                              src={option.option_image}
+                              alt="Option visual"
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "100px",
+                                marginLeft: "10px",
+                              }}
+                            />
+                          )}
+                        </Checkbox>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <Space>
@@ -444,7 +602,7 @@ const TestScreen: React.FC = () => {
                   type="primary"
                   onClick={
                     currentQuestionIndex === questions.length - 1
-                      ? submitTest
+                      ? handleNext
                       : handleNext
                   }
                   disabled={submitting}
@@ -461,7 +619,6 @@ const TestScreen: React.FC = () => {
             </Card>
           </Col>
 
-          {/* Question Number Grid */}
           <Col xs={24} lg={6}>
             <Card title="Answer Status" bordered>
               <Space direction="vertical" size="small">
@@ -493,56 +650,88 @@ const TestScreen: React.FC = () => {
                   marginTop: 20,
                 }}
               >
-                {Array.isArray(questions) &&
-                  questions.map((q, index) => {
-                    const answered = selectedAnswers[q.id]?.optionId !== null;
-                    const seen = seenQuestions.includes(q.id);
+                {questions.map((q, index) => {
+                  const answered =
+                    (selectedAnswers[q.id]?.optionIds?.length || 0) > 0 ||
+                    selectedAnswers[q.id]?.optionId !== null ||
+                    selectedAnswers[q.id]?.text !== null;
+                  const seen = seenQuestions.includes(q.id);
 
-                    let bgColor = "#faad14"; // Gold
-                    let textColor = "#000";
+                  let bgColor = "#faad14"; // Gold - not seen
+                  let textColor = "#000";
 
-                    if (answered) {
-                      bgColor = "#52c41a";
-                      textColor = "#fff";
-                    } else if (seen) {
-                      bgColor = "#1890ff";
-                      textColor = "#fff";
-                    }
+                  if (answered) {
+                    bgColor = "#52c41a"; // Green - answered
+                    textColor = "#fff";
+                  } else if (seen) {
+                    bgColor = "#1890ff"; // Blue - seen but not answered
+                    textColor = "#fff";
+                  }
 
-                    return (
-                      <Button
-                        key={q.id}
-                        type="default"
-                        style={{
-                          backgroundColor: bgColor,
-                          color: textColor,
-                        }}
-                        onClick={() => {
-                          setCurrentQuestionIndex(index);
-                          if (!seenQuestions.includes(q.id)) {
-                            setSeenQuestions([...seenQuestions, q.id]);
-                          }
-                        }}
-                      >
-                        {index + 1}
-                      </Button>
-                    );
-                  })}
+                  return (
+                    <Button
+                      key={q.id}
+                      type="default"
+                      style={{
+                        backgroundColor: bgColor,
+                        color: textColor,
+                      }}
+                      onClick={() => handleQuestionNavigation(index)}
+                    >
+                      {index + 1}
+                    </Button>
+                  );
+                })}
               </div>
             </Card>
-            <Card>
-              <Space direction="vertical" size="large">
-                <h2>Question {currentQuestionIndex + 1}</h2>
-                
+            <Card title="Marks Information" bordered style={{ marginTop: 20 }}>
+              <Space
+                direction="vertical"
+                size="middle"
+                style={{ width: "100%" }}
+              >
+                <div
+                  style={{
+                    border: "2px solid #52c41a", // Green border
+                    borderRadius: "4px",
+                    padding: "8px 16px",
+                    backgroundColor: "#f6ffed", // Light green background
+                    textAlign: "center",
+                    width: "100%",
+                  }}
+                >
+                  <Text strong style={{ color: "#52c41a" }}>
+                    Total Marks:
+                  </Text>{" "}
+                  <Text strong style={{ fontSize: "16px" }}>
+                    {currentQuestion?.total_marks}
+                  </Text>
+                </div>
+                <div
+                  style={{
+                    border: "2px solid #ff4d4f", // Red border
+                    borderRadius: "4px",
+                    padding: "8px 16px",
+                    backgroundColor: "#fff2f0", // Light red background
+                    textAlign: "center",
+                    width: "100%",
+                  }}
+                >
+                  <Text strong style={{ color: "#ff4d4f" }}>
+                    Negative Marks:
+                  </Text>{" "}
+                  <Text strong style={{ fontSize: "16px" }}>
+                    {currentQuestion?.negative_marks}
+                  </Text>
+                </div>
               </Space>
             </Card>
           </Col>
         </Row>
 
-        {/* Result Modal stays unchanged */}
-        <Modal
+        {/* <Modal
           title="Test Result"
-          visible={isModalVisible}
+          open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalOk}
           okText="OK"
@@ -573,6 +762,82 @@ const TestScreen: React.FC = () => {
                   key: "6",
                   label: "Final Result",
                   value: testResult.finalResult,
+                },
+              ]}
+              columns={[
+                { title: "Details", dataIndex: "label", key: "label" },
+                { title: "Result", dataIndex: "value", key: "value" },
+              ]}
+              pagination={false}
+              bordered
+            />
+          )}
+        </Modal> */}
+        <Modal
+          title="Test Completed"
+          open={isFinalModalVisible}
+          onOk={() => {
+            setIsFinalModalVisible(false);
+            navigate("/student/dashboard");
+          }}
+          footer={[
+            <Button
+              key="submit"
+              type="primary"
+              onClick={() => {
+                setIsFinalModalVisible(false);
+                navigate("/student/dashboard");
+              }}
+            >
+              OK
+            </Button>,
+          ]}
+          width={700}
+        >
+          {finalResult && (
+            <Table
+              dataSource={[
+                {
+                  key: "1",
+                  label: "Total Questions",
+                  value: finalResult.total_questions,
+                },
+                { key: "2", label: "Attempted", value: finalResult.attempted },
+                {
+                  key: "3",
+                  label: "Unattempted",
+                  value: finalResult.unattempted,
+                },
+                {
+                  key: "4",
+                  label: "Correct Answers",
+                  value: finalResult.correct,
+                },
+                { key: "5", label: "Wrong Answers", value: finalResult.wrong },
+                {
+                  key: "6",
+                  label: "Final Score",
+                  value: `${finalResult.final_score}%`,
+                },
+                {
+                  key: "7",
+                  label: "Final Result",
+                  value: finalResult.final_result,
+                },
+                {
+                  key: "8",
+                  label: "Marks Awarded",
+                  value: finalResult.marks_awarded,
+                },
+                {
+                  key: "9",
+                  label: "Marks Deducted",
+                  value: finalResult.marks_deducted,
+                },
+                {
+                  key: "10",
+                  label: "Total Marks Awarded",
+                  value: finalResult.total_marks_awarded,
                 },
               ]}
               columns={[

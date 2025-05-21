@@ -58,7 +58,7 @@ const AppSidebar = () => {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        height: "100vh",
+        height: "120vh",
         position: "relative",
         borderRight: "1px solid #f0f0f0",
         boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
@@ -142,8 +142,6 @@ const AppSidebar = () => {
           />
         </div>
       </div>
-
-      {/* Logout Button - fixed at the bottom with margin */}
       <div
         style={{
           padding: "16px",

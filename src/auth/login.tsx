@@ -11,7 +11,7 @@ const { Title } = Typography;
 
 const Login = () => {
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Added loading state
   const navigate = useNavigate();
 
   const handleFinish = async (values: {
@@ -28,33 +28,29 @@ const Login = () => {
       const response = await axios.post(Loginapi(), payload);
 
       if (response.data.token) {
-        // Store token in localStorage
         localStorage.setItem("token", response.data.token);
 
-        // Optional: Store user data if available
+        const userRole = response.data.profile.role?.toLowerCase();
+
+        if (userRole === "admin") {
+          navigate("/college/dashboard");
+        }
+        if (userRole === "student") {
+          navigate("/student/dashboard");
+        }
+        if (userRole === "superadmin") {
+          navigate("/dashboard");
+        } 
+
         if (response.data.user) {
-          localStorage.setItem("userData", JSON.stringify(response.data.user));
+          localStorage.setItem(
+            "userData",
+            JSON.stringify(response.data.profile)
+          );
+
         }
 
         message.success("Login successful!");
-        alert("Succesfully logged in");
-        if (
-          values.username === "admin@gmail.com" &&
-          values.password === "123456"
-        ) {
-          navigate("/dashboard");
-          return;
-        }
-
-        if (
-          values.username === "College@gmail.com" &&
-          values.password === "123456"
-        ) {
-          navigate("/college/dashboard");
-          return;
-        }
-
-        navigate("/student/dashboard");
       } else {
         throw new Error("No token received");
       }
@@ -124,7 +120,7 @@ const Login = () => {
         {/* Footer Links */}
         <Row justify="space-between" className="signin-footer">
           <Col>
-            <Typography.Link className="forgot">
+            <Typography.Link className="forgot" onClick={() => navigate("/forgotpassword")}>
               Forgot Password ?
             </Typography.Link>
           </Col>

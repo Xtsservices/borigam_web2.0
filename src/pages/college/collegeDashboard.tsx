@@ -2,597 +2,418 @@ import { useEffect, useState } from "react";
 import {
   Card,
   Button,
-  Typography,
-  Image,
+  Table,
   Modal,
-  Input,
   Form,
+  Select,
   message,
+  Space,
+  Input,
 } from "antd";
 import CollegeLayoutWrapper from "../../components/collegeLayout/collegeLayoutWrapper";
-import { useNavigate } from "react-router-dom";
-import add_dashboard from "../../assets/add_dashboard.png";
-const { Title } = Typography;
+import { useNavigate, useParams } from "react-router-dom";
+const { Option } = Select;
 
-// Define TypeScript Interface for Course
 interface Course {
   id: number;
   name: string;
   status: string;
 }
 
-interface User {
-  userId: number;
+interface Batch {
+  batch_id: number;
+  name: string;
+  course_id: number;
+  course_name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
+interface Student {
+  student_id: number;
   firstname: string;
   lastname: string;
   email: string;
   countrycode: string;
   mobileno: string;
   status: number;
-  role: string;
+  college_name?: string;
+  courses?: { course_id: number; course_name: string }[];
+  batches?: { batch_id: number; batch_name: string }[];
 }
 
-interface College {
-  collegeId: number;
-  collegeName: string;
-  collegeAddress: string;
-  collegeStatus: number;
-  users: User[];
-}
-
-interface Students {
-  mobileno: string;
-  email: string;
-  studentId: number;
-  firstname: string;
-  lastname: string;
-  role: string;
-  countrycode: string;
-  status: number;
-}
-
-interface UnassignedStudents {
-  count: number;
-}
-
-const CollegeDashboard = () => {
+const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [, setCourses] = useState<Course[]>([]);
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [students, setStudents] = useState<Students[]>([]);
-  const [unassignedStudents, setunassignedStudents] =
-    useState<UnassignedStudents>({ count: 0 });
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalVisible1, setModalVisible1] = useState(false);
+  const { collegeId } = useParams();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [filteredBatches, setFilteredBatches] = useState<Batch[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+  const [courseModalVisible, setCourseModalVisible] = useState(false);
+  const [batchModalVisible, setBatchModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [form1] = Form.useForm();
+  const [courseForm] = Form.useForm();
+  const [batchForm] = Form.useForm();
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        console.error("No token found, authentication required");
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          "http://localhost:3001/api/course/getCourses",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              token: token,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data: Course[] = await response.json();
-        setCourses(data);
-      } catch (error) {
-        console.error("Error fetching courses:", error);
-      }
-    };
-
-    fetchColleges();
     fetchCourses();
-    fetchStudents();
-    fetchUnassignedStudentsCount();
-  }, []);
+    fetchBatches();
+    fetchStudents(collegeId ? parseInt(collegeId) : undefined);
+  }, [collegeId]);
 
-  const fetchColleges = async () => {
+  const fetchCourses = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found, authentication required");
-      return;
-    }
-
     try {
       const response = await fetch(
-        "http://localhost:3001/api/college/viewAllCollegesAndUsers",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            token: token,
-          },
+          headers: { "Content-Type": "application/json", token: token || "" },
         }
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setColleges(result.data);
+      const data = await response.json();
+      setCourses(data);
     } catch (error) {
-      console.error("Error fetching colleges:", error);
+      message.error("Failed to fetch courses");
     }
   };
 
-  const fetchUnassignedStudentsCount = async () => {
+  const fetchBatches = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found, authentication required");
-      return;
-    }
-
     try {
       const response = await fetch(
-        "http://localhost:3001/api/student/getUnassignedStudentsCount",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            token: token,
-          },
+          headers: { "Content-Type": "application/json", token: token || "" },
         }
       );
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
       const result = await response.json();
-      if (result.data) {
-        setunassignedStudents({ count: result.data.count });
-      } else {
-        console.error("Unexpected response format:", result);
-      }
+      setBatches(result.data || []);
     } catch (error) {
-      console.error("Error fetching unassigned students count:", error);
+      message.error("Failed to fetch batches");
     }
   };
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (collegeId?: number) => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found, authentication required");
-      return;
-    }
     try {
-      const response = await fetch(
-        "http://localhost:3001/api/student/getAllStudents",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            token: token,
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
+      const url = collegeId
+        ? `http://13.233.33.133:3001/api/student/getAllStudents?collegeId=${collegeId}`
+        : "http://13.233.33.133:3001/api/student/getAllStudents";
+
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json", token: token || "" },
+      });
       const result = await response.json();
-      console.log("Fetched Students:", result);
       setStudents(result.data || []);
     } catch (error) {
-      console.error("Error fetching students:", error);
+      message.error("Failed to fetch students");
     }
   };
 
-  const handleCollegeSubmit = async (values: any) => {
+  const handleCreateCourse = async () => {
+    setCourseModalVisible(true);
+  };
+
+  const handleCreateBatch = async () => {
+    setBatchModalVisible(true);
+  };
+
+  const handleCourseChange = (courseId: number) => {
+    const batchesForCourse = batches.filter(
+      (batch) => batch.course_id === courseId
+    );
+    setFilteredBatches(batchesForCourse);
+    form.setFieldsValue({ batchId: undefined });
+  };
+
+  const handleAssignStudent = async (values: any) => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/college/registerCollege",
+        "http://13.233.33.133:3001/api/student/assignStudentToCourse",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             token: localStorage.getItem("token") || "",
           },
-          body: JSON.stringify(values),
+          body: JSON.stringify({
+            studentId: currentStudent?.student_id,
+            courseId: values.courseId,
+            batchId: values.batchId,
+          }),
         }
       );
-      if (!response.ok) {
-        throw new Error("Failed to register college");
-      }
-      alert("College registered successfully!");
-      setModalVisible(false);
-      form.resetFields();
-      window.location.reload();
+
+      if (!response.ok) throw new Error("Assignment failed");
+
+      message.success("Student assigned successfully");
+      setAssignModalVisible(false);
+      fetchStudents(collegeId ? parseInt(collegeId) : undefined);
     } catch (error) {
-      console.error("Error registering college:", error);
-      message.error("Failed to register college");
+      message.error("Failed to assign student");
     }
   };
 
-  const handleStudentSubmit = async (values: any) => {
-    try {
-      const response = await fetch(
-        "http://localhost:3001/api/student/createStudent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.getItem("token") || "",
-          },
-          body: JSON.stringify(values),
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Failed to create student");
-      }
-      alert("Student created successfully!");
-      setModalVisible1(false);
-      form1.resetFields();
-      window.location.reload();
-    } catch (error) {
-      console.error("Error creating student:", error);
-      message.error("Failed to create student");
-    }
-  };
+  const batchColumns = [
+    {
+      title: "Batch Name",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Course",
+      dataIndex: "course_name",
+      key: "course_name",
+    },
+    {
+      title: "Start Date",
+      dataIndex: "start_date",
+      key: "start_date",
+      render: (date: string) =>
+        new Date(parseInt(date) * 1000).toLocaleDateString(),
+    },
+    {
+      title: "End Date",
+      dataIndex: "end_date",
+      key: "end_date",
+      render: (date: string) =>
+        new Date(parseInt(date) * 1000).toLocaleDateString(),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_: any) => <Button type="link">✓</Button>,
+    },
+  ];
 
-  const handleCollegeClick = () => {
-    setModalVisible(true);
-  };
-
-  const handleStudentClick = () => {
-    setModalVisible1(true);
-  };
-
-  const navigateToColleges = () => {
-    navigate("/dashboard/CollageList");
-  };
-
-  const navigateToStudents = () => {
-    navigate("/dashboard/AllStudents");
-  };
+  const studentColumns = [
+    {
+      title: "Name",
+      dataIndex: "firstname",
+      key: "name",
+      render: (_: any, record: Student) =>
+        `${record.firstname} ${record.lastname}`,
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+    },
+    {
+      title: "Mobile",
+      key: "mobile",
+      render: (_: any, record: Student) =>
+        `${record.countrycode} ${record.mobileno}`,
+    },
+    {
+      title: "Courses",
+      key: "courses",
+      render: (_: any, record: Student) =>
+        record.courses && record.courses.length > 0
+          ? record.courses.map((course: any) => course.course_name).join(", ")
+          : "Not assigned",
+    },
+    {
+      title: "Batches",
+      key: "batches",
+      render: (_: any, record: Student) =>
+        record.batches && record.batches.length > 0
+          ? record.batches.map((batch: any) => batch.batch_name).join(", ")
+          : "Not assigned",
+    },
+    {
+      title: "Assign",
+      key: "assign",
+      render: (_: any, record: Student) => {
+        const hasCourseAssignment = record.courses && record.courses.length > 0;
+        return !hasCourseAssignment ? (
+          <Button
+            type="link"
+            onClick={() => {
+              setCurrentStudent(record);
+              setFilteredBatches([]);
+              form.resetFields();
+              setAssignModalVisible(true);
+            }}
+          >
+            Assign
+          </Button>
+        ) : null;
+      },
+    },
+  ];
 
   return (
-    <CollegeLayoutWrapper pageTitle="BORIGAM">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          flexWrap: "nowrap", // Changed from wrap to nowrap
-          gap: "10px", // Reduced gap
-          marginBottom: "20px", // Allows horizontal scrolling if needed
-        }}
-      >
-        {/* Students Card */}
-        <Card
-          style={{
-            minWidth: "30%", // Changed from fixed width to minWidth
-            borderRadius: "10px",
-            borderColor: "#8B5EAB",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            flexShrink: 0, // Prevents card from shrinking
-          }}
-        >
-          <Button
-            type="primary"
-            style={{
-              background: "#8B5EAB",
-              borderColor: "#8B5EAB",
-              width: "100%",
-              fontWeight: "bold",
-              marginBottom: "20px",
-              whiteSpace: "nowrap", // Prevents button text from wrapping
-            }}
-            onClick={handleStudentClick}
-          >
-            Students +
-          </Button>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px", // Reduced gap
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: "16px",
-            }}
-          >
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }} // Slightly smaller
-              onClick={navigateToStudents}
-            >
-              All: {students.length}
-            </Button>
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-              onClick={() => navigate("/dashboard/unassigned")}
-            >
-              Unassigned: {unassignedStudents.count}
-            </Button>
-          </div>
-        </Card>
-
-        {/* Tests Card */}
-        <Card
-          style={{
-            minWidth: "30%",
-            borderRadius: "10px",
-            borderColor: "#8B5EAB",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            flexShrink: 0,
-          }}
-        >
-          <Button
-            type="primary"
-            style={{
-              background: "#8B5EAB",
-              borderColor: "#8B5EAB",
-              width: "100%",
-              fontWeight: "bold",
-              marginBottom: "20px",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Tests
-          </Button>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: "16px",
-            }}
-          >
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-              onClick={() => navigate("/dashboard/OngoingTest")}
-            >
-              Ongoing
-            </Button>
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-              onClick={() => navigate("/dashboard/CompletedTest")}
-            >
-              Completed
-            </Button>
-          </div>
-        </Card>
-
-        {/* Colleges Card */}
-        <Card
-          style={{
-            minWidth: "30%",
-            borderRadius: "10px",
-            borderColor: "#8B5EAB",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            flexShrink: 0,
-          }}
-        >
-          <Button
-            type="primary"
-            style={{
-              background: "#8B5EAB",
-              borderColor: "#8B5EAB",
-              width: "100%",
-              fontWeight: "bold",
-              marginBottom: "20px",
-              whiteSpace: "nowrap",
-            }}
-            onClick={handleCollegeClick}
-          >
-            Colleges +
-          </Button>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: "16px",
-            }}
-          >
-            <Button
-              onClick={navigateToColleges}
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-            >
-              Colleges: {colleges.length}
-            </Button>
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-              onClick={() => navigate("/dashboard/CollageStudents")}
-            >
-              Students
-            </Button>
-          </div>
-        </Card>
-      </div>
+    <CollegeLayoutWrapper
+      pageTitle={collegeId ? "College Students" : "All Students"}
+    >
+      {/* Courses Section */}
       <Card
-        style={{
-          width: "100%",
-          textAlign: "center",
-          borderRadius: "10px",
-          borderColor: "#8B5EAB",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          padding: "10px",
-        }}
+        title={
+          <Space>
+            <span>Courses</span>
+            <Button type="primary" onClick={handleCreateCourse}>
+              Add Course +
+            </Button>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
       >
-        <Image
-          src={add_dashboard}
-          alt="Dashboard Illustration"
-          preview={false}
-          style={{ height: "300px", width: "400px" }}
-        />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "20px",
-            marginTop: "20px",
-          }}
-        >
-          <Button
-            type="primary"
-            style={{
-              background: "#FFD439",
-              borderColor: "#FFD439",
-              fontWeight: "bold",
-              width: "200px",
-            }}
-            onClick={() => navigate("addtest")}
-          >
-            Add Test +
-          </Button>
-
-          <Button
-            type="primary"
-            style={{
-              background: "#8B5EAB",
-              borderColor: "#8B5EAB",
-              fontWeight: "bold",
-              width: "200px",
-            }}
-            onClick={() => navigate("addquestions")}
-          >
-            Add Questions +
-          </Button>
-        </div>
+        {courses.map((course) => (
+          <div key={course.id} style={{ marginBottom: 8 }}>
+            {course.name}
+          </div>
+        ))}
       </Card>
+
+      {/* Batches Section */}
+      <Card
+        title={
+          <Space>
+            <span>Batches</span>
+            <Button type="primary" onClick={handleCreateBatch}>
+              Add Batch +
+            </Button>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+      >
+        <Table
+          columns={batchColumns}
+          dataSource={batches}
+          rowKey="batch_id"
+          pagination={false}
+        />
+      </Card>
+
+      {/* Students Section */}
+      <Card
+        title="Students"
+        extra={
+          <Button
+            type="primary"
+            onClick={() => navigate("/dashboard/create-student")}
+          >
+            Create Student
+          </Button>
+        }
+      >
+        <Table
+          columns={studentColumns}
+          dataSource={students}
+          rowKey="student_id"
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+
+      {/* Test Results Section */}
+      <Card title="Test Results" style={{ marginTop: 16 }}>
+        <Button
+          type="primary"
+          onClick={() => navigate("/dashboard/test-results")}
+        >
+          View Test Results
+        </Button>
+      </Card>
+
+      {/* Assign Student Modal */}
       <Modal
-        title="Register College"
-        open={modalVisible}
-        onCancel={() => setModalVisible(false)}
+        title={`Assign Student: ${currentStudent?.firstname} ${currentStudent?.lastname}`}
+        open={assignModalVisible}
+        onCancel={() => setAssignModalVisible(false)}
+        onOk={() => form.submit()}
+        okText="Assign"
+      >
+        <Form form={form} onFinish={handleAssignStudent} layout="vertical">
+          <Form.Item
+            name="courseId"
+            label="Assign Course"
+            rules={[{ required: true, message: "Please select a course" }]}
+          >
+            <Select placeholder="Select course" onChange={handleCourseChange}>
+              {courses.map((course) => (
+                <Option key={course.id} value={course.id}>
+                  {course.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="batchId"
+            label="Assign Batch"
+            rules={[{ required: true, message: "Please select a batch" }]}
+          >
+            <Select
+              placeholder="Select batch"
+              disabled={!form.getFieldValue("courseId")}
+            >
+              {filteredBatches.map((batch) => (
+                <Option key={batch.batch_id} value={batch.batch_id}>
+                  {batch.name} ({batch.course_name})
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Add Course Modal */}
+      <Modal
+        title="Add Course"
+        open={courseModalVisible}
+        onCancel={() => setCourseModalVisible(false)}
         footer={null}
       >
-        <Form form={form} layout="vertical" onFinish={handleCollegeSubmit}>
+        <Form form={courseForm} layout="vertical">
           <Form.Item
             name="name"
-            label="College Name"
-            rules={[{ required: true, message: "Please enter college name" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="address"
-            label="Address"
-            rules={[{ required: true, message: "Please enter address" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="code"
-            label="College Code"
-            rules={[{ required: true, message: "Please enter college code" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Title level={5}>Contact Information</Title>
-          <Form.Item
-            name={["contact", "firstname"]}
-            label="First Name"
-            rules={[{ required: true, message: "Enter first name" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name={["contact", "lastname"]}
-            label="Last Name"
-            rules={[{ required: true, message: "Enter last name" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name={["contact", "email"]}
-            label="Email"
-            rules={[
-              { required: true, type: "email", message: "Enter a valid email" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name={["contact", "countrycode"]}
-            label="Country Code"
-            initialValue="+91"
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name={["contact", "mobileno"]}
-            label="Mobile Number"
-            rules={[{ required: true, message: "Enter mobile number" }]}
+            label="Course Name"
+            rules={[{ required: true, message: "Please enter course name" }]}
           >
             <Input />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              Register
+              Add Course
             </Button>
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Add Batch Modal */}
       <Modal
-        title="Register Student"
-        open={modalVisible1}
-        onCancel={() => setModalVisible1(false)}
+        title="Add Batch"
+        open={batchModalVisible}
+        onCancel={() => setBatchModalVisible(false)}
         footer={null}
       >
-        <Form form={form1} layout="vertical" onFinish={handleStudentSubmit}>
+        <Form form={batchForm} layout="vertical">
           <Form.Item
-            name={["firstname"]}
-            label="First Name"
-            rules={[{ required: true, message: "Enter first name" }]}
+            name="name"
+            label="Batch Name"
+            rules={[{ required: true, message: "Please enter batch name" }]}
           >
             <Input />
           </Form.Item>
-
           <Form.Item
-            name={["lastname"]}
-            label="Last Name"
-            rules={[{ required: true, message: "Enter last name" }]}
+            name="courseId"
+            label="Course"
+            rules={[{ required: true, message: "Please select course" }]}
           >
-            <Input />
+            <Select placeholder="Select course">
+              {courses.map((course) => (
+                <Option key={course.id} value={course.id}>
+                  {course.name}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
-
-          <Form.Item
-            name={["email"]}
-            label="Email"
-            rules={[
-              { required: true, type: "email", message: "Enter a valid email" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name={["countrycode"]}
-            label="Country Code"
-            initialValue="+91"
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name={["mobileno"]}
-            label="Mobile Number"
-            rules={[{ required: true, message: "Enter mobile number" }]}
-          >
-            <Input />
-          </Form.Item>
-
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              Register
+              Add Batch
             </Button>
           </Form.Item>
         </Form>
@@ -601,4 +422,4 @@ const CollegeDashboard = () => {
   );
 };
 
-export default CollegeDashboard;
+export default StudentDashboard;

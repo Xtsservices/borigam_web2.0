@@ -11,7 +11,7 @@ import {
 } from "antd";
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
 import { useNavigate } from "react-router-dom";
-import add_dashboard from "../../../assets/add_dashboard.png"
+import add_dashboard from "../../../assets/add_dashboard.png";
 
 const { Title } = Typography;
 
@@ -52,7 +52,6 @@ interface Students {
   status: number;
 }
 
-
 interface UnassignedStudents {
   count: number;
 }
@@ -80,7 +79,7 @@ const Dashboard = () => {
 
       try {
         const response = await fetch(
-          "http://localhost:3001/api/course/getCourses",
+          "http://13.233.33.133:3001/api/course/getCourses",
           {
             method: "GET",
             headers: {
@@ -101,7 +100,6 @@ const Dashboard = () => {
       }
     };
 
-
     fetchColleges();
     fetchCourses();
     fetchStudents();
@@ -117,7 +115,7 @@ const Dashboard = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/college/viewAllCollegesAndUsers",
+        "http://13.233.33.133:3001/api/college/viewAllCollegesAndUsers",
         {
           method: "GET",
           headers: {
@@ -147,7 +145,7 @@ const Dashboard = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/student/getUnassignedStudentsCount",
+        "http://13.233.33.133:3001/api/student/getUnassignedStudentsCount",
         {
           method: "GET",
           headers: {
@@ -178,7 +176,7 @@ const Dashboard = () => {
     }
     try {
       const response = await fetch(
-        "http://localhost:3001/api/student/getAllStudents",
+        "http://13.233.33.133:3001/api/student/getAllStudents",
         {
           method: "GET",
           headers: {
@@ -201,7 +199,7 @@ const Dashboard = () => {
   const handleCollegeSubmit = async (values: any) => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/college/registerCollege",
+        "http://13.233.33.133:3001/api/college/registerCollege",
         {
           method: "POST",
           headers: {
@@ -227,7 +225,7 @@ const Dashboard = () => {
   const handleStudentSubmit = async (values: any) => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/student/createStudent",
+        "http://13.233.33.133:3001/api/student/createStudent",
         {
           method: "POST",
           headers: {
@@ -249,7 +247,6 @@ const Dashboard = () => {
       message.error("Failed to create student");
     }
   };
-
 
   const handleCollegeClick = () => {
     setModalVisible(true);
@@ -369,6 +366,12 @@ const Dashboard = () => {
               onClick={() => navigate("/dashboard/CompletedTest")}
             >
               Completed
+            </Button>
+            <Button
+              style={{ width: "120px", height: "45px", fontSize: "14px" }}
+              onClick={() => navigate("/dashboard/upcomingtest")}
+            >
+              Upcoming
             </Button>
           </div>
         </Card>
@@ -493,12 +496,12 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-          <Form.Item 
+          <Form.Item
             name="code"
             label="College Code"
             rules={[{ required: true, message: "Please enter college code" }]}
           >
-            <Input/>
+            <Input />
           </Form.Item>
           <Title level={5}>Contact Information</Title>
           <Form.Item

@@ -13,6 +13,7 @@ import {
   Space,
   Spin,
 } from "antd";
+import { Dayjs } from "dayjs";
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
 import { useNavigate } from "react-router-dom";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -56,28 +57,32 @@ const AddTest = () => {
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [filteredBatches, setFilteredBatches] = useState<Batch[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
   const [testType, setTestType] = useState<string>("");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDateTime, setStartDateTime] = useState<Dayjs | null>(null);
+  const [endDateTime, setEndDateTime] = useState<Dayjs | null>(null);
+
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchQuestions();
     fetchCourses();
     fetchBatches();
   }, []);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = async (courseId: number | null) => {
+    if (!courseId) {
+      setFilteredQuestions([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/question/getAllQuestions",
+        `http://13.233.33.133:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -102,7 +107,7 @@ const AddTest = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           headers: {
             "Content-Type": "application/json",
@@ -123,7 +128,7 @@ const AddTest = () => {
   const fetchBatches = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/viewAllBatches",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -136,28 +141,10 @@ const AddTest = () => {
 
       const data = await response.json();
       setBatches(data.data);
-      setFilteredBatches(data.data);
     } catch (error) {
       console.error("Error fetching batches:", error);
     }
   };
-
-  // Filter batches when course changes
-  useEffect(() => {
-    if (selectedCourse) {
-      const filtered = batches.filter(
-        (batch) => batch.course_id === selectedCourse
-      );
-      setFilteredBatches(filtered);
-      setSelectedBatches((prev) =>
-        prev.filter((batchId) =>
-          filtered.some((batch) => batch.batch_id === batchId)
-        )
-      );
-    } else {
-      setFilteredBatches(batches);
-    }
-  }, [selectedCourse, batches]);
 
   const handleCheckboxChange = (questionId: number, checked: boolean) => {
     setSelectedQuestions((prev) =>
@@ -165,16 +152,14 @@ const AddTest = () => {
     );
   };
 
-  const formatDate = (date: any) => {
-    if (!date) return "";
-    const day = String(date.date()).padStart(2, "0");
-    const month = String(date.month() + 1).padStart(2, "0");
-    const year = date.year();
-    return `${day}-${month}-${year}`;
-  };
-
   const handleBatchChange = (selectedBatchIds: number[]) => {
     setSelectedBatches(selectedBatchIds);
+  };
+
+  const handleCourseChange = (value: number) => {
+    setSelectedCourse(value);
+    fetchQuestions(value);
+    setSelectedQuestions([]);
   };
 
   const handleSubmit = async () => {
@@ -190,14 +175,16 @@ const AddTest = () => {
       message.error("Please select at least one batch");
       return;
     }
-    if (!startDate || !endDate) {
-      message.error("Please select both start and end dates");
+    if (!startDateTime || !endDateTime) {
+      message.error("Please select both start and end datetime");
       return;
     }
     if (selectedQuestions.length === 0) {
       message.error("Please select at least one question");
       return;
     }
+    const formattedStartDateTime = startDateTime.format("DD-MM-YYYY HH:mm:ss");
+    const formattedEndDateTime = endDateTime.format("DD-MM-YYYY HH:mm:ss");
 
     const duration = testType === "Mock Test" ? 180 : 30;
 
@@ -207,13 +194,13 @@ const AddTest = () => {
       course_id: selectedCourse,
       questions: selectedQuestions,
       batch_ids: selectedBatches,
-      start_date: startDate,
-      end_date: endDate,
+      start_date: formattedStartDateTime,
+      end_date: formattedEndDateTime,
     };
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/question/createTest",
+        "http://13.233.33.133:3001/api/question/createTest",
         {
           method: "POST",
           headers: {
@@ -237,9 +224,9 @@ const AddTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:3001/api/question/deleteQuestion?id=${questionId}`,
+        `http://13.233.33.133:3001/api/question/deleteQuestion?id=${questionId}`,
         {
-          method: "DELETE",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             token: localStorage.getItem("token") || "",
@@ -250,9 +237,7 @@ const AddTest = () => {
       if (!response.ok) throw new Error("Failed to delete question");
 
       message.success("Question deleted successfully");
-      // Refresh the questions list
-      await fetchQuestions();
-      // Remove the question from selected questions if it was selected
+      await fetchQuestions(selectedCourse);
       setSelectedQuestions((prev) => prev.filter((id) => id !== questionId));
     } catch (error) {
       console.error("Error deleting question:", error);
@@ -265,14 +250,6 @@ const AddTest = () => {
   const handleModalOk = () => {
     setIsModalVisible(false);
     navigate("/dashboard");
-  };
-
-  const handleStartDateChange = (date: any) => {
-    setStartDate(formatDate(date));
-  };
-
-  const handleEndDateChange = (date: any) => {
-    setEndDate(formatDate(date));
   };
 
   return (
@@ -299,7 +276,7 @@ const AddTest = () => {
           <Form.Item label="Select Course:" required>
             <Select
               placeholder="Select Course"
-              onChange={(value) => setSelectedCourse(Number(value))}
+              onChange={handleCourseChange}
               value={selectedCourse}
               style={{ width: "100%", marginBottom: "20px" }}
             >
@@ -320,7 +297,7 @@ const AddTest = () => {
               value={selectedBatches}
               style={{ width: "100%", marginBottom: "20px" }}
               tagRender={({ label, value, closable, onClose }) => {
-                const batch = filteredBatches.find((b) => b.batch_id === value);
+                const batch = batches.find((b) => b.batch_id === value);
                 return (
                   <Tag
                     closable={closable}
@@ -332,8 +309,8 @@ const AddTest = () => {
                 );
               }}
             >
-              {Array.isArray(filteredBatches) &&
-                filteredBatches.map((batch) => (
+              {Array.isArray(batches) &&
+                batches.map((batch) => (
                   <Option key={batch.batch_id} value={batch.batch_id}>
                     {batch.name} ({batch.course_name})
                   </Option>
@@ -341,19 +318,21 @@ const AddTest = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item label="Start Date:" required>
+          <Form.Item label="Start Date and Time:" required>
             <DatePicker
-              onChange={handleStartDateChange}
+              showTime
               style={{ width: "100%", marginBottom: "20px" }}
-              format="DD-MM-YYYY"
+              format="DD-MM-YYYY HH:mm:ss"
+              onChange={(value) => setStartDateTime(value)}
             />
           </Form.Item>
 
-          <Form.Item label="End Date:" required>
+          <Form.Item label="End Date and Time:" required>
             <DatePicker
-              onChange={handleEndDateChange}
+              showTime
               style={{ width: "100%", marginBottom: "20px" }}
-              format="DD-MM-YYYY"
+              format="DD-MM-YYYY HH:mm:ss"
+              onChange={(value) => setEndDateTime(value)}
             />
           </Form.Item>
 
@@ -363,7 +342,7 @@ const AddTest = () => {
               <Spin size="large" />
             </div>
           ) : filteredQuestions.length === 0 ? (
-            <p>No questions available</p>
+            <p>No questions available for selected course</p>
           ) : (
             filteredQuestions.map((question) => (
               <Card

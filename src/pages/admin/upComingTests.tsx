@@ -14,8 +14,8 @@ interface Test {
   test_status: string;
 }
 
-const OngoingTest = () => {
-  const [currentTests, setCurrentTests] = useState<Test[]>([]);
+const UpComingTest = () => {
+  const [upcomingTests, setUpcomingTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -34,10 +34,10 @@ const OngoingTest = () => {
         if (!response.ok) throw new Error("Failed to fetch tests");
 
         const result = await response.json();
-        setCurrentTests(result.data.current_tests || []);
+        setUpcomingTests(result.data.upcoming_tests || []);
       } catch (error) {
         console.error("Error fetching tests:", error);
-        message.error("Failed to fetch ongoing tests");
+        message.error("Failed to fetch upcoming tests");
       } finally {
         setLoading(false);
       }
@@ -79,15 +79,15 @@ const OngoingTest = () => {
     {
       title: "Status",
       key: "test_status",
-      render: () => <Tag color="green">Ongoing</Tag>,
+      render: () => <Tag color="orange">Upcoming</Tag>,
     },
   ];
 
   return (
-    <LayoutWrapper pageTitle={"BORIGAM / Ongoing Test"}>
-      <Card title="Ongoing Tests" loading={loading}>
+    <LayoutWrapper pageTitle={"BORIGAM / Upcoming Tests"}>
+      <Card title="Upcoming Tests" loading={loading}>
         <Table
-          dataSource={currentTests}
+          dataSource={upcomingTests}
           columns={columns}
           rowKey="test_id"
           pagination={{ pageSize: 10 }}
@@ -97,4 +97,4 @@ const OngoingTest = () => {
   );
 };
 
-export default OngoingTest;
+export default UpComingTest;

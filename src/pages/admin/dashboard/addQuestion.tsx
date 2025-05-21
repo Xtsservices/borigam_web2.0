@@ -8,11 +8,15 @@ import {
   message,
   Modal,
   Typography,
+  InputNumber,
+  Upload,
 } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
 const { Option } = Select;
 const { Text } = Typography;
+const { TextArea } = Input;
 
 interface Course {
   id: number;
@@ -20,30 +24,36 @@ interface Course {
   status: string;
 }
 
-// Utility function to format dates
+interface QuestionOption {
+  option_text: string;
+  is_correct: boolean;
+  image?: File | null;
+}
 
 const AddQuestions = () => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const questionTypes = ["radio"];
+  const questionTypes = ["radio", "multiple_choice", "text"];
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [questionText, setQuestionText] = useState<string>("");
   const [questionType, setQuestionType] = useState<string>("");
-  const [options, setOptions] = useState([
+  const [options, setOptions] = useState<QuestionOption[]>([
     { option_text: "", is_correct: false },
     { option_text: "", is_correct: false },
     { option_text: "", is_correct: false },
     { option_text: "", is_correct: false },
   ]);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [questionImageFile, setQuestionImageFile] = useState<File | null>(null);
+  const [totalMarks, setTotalMarks] = useState<number>(1);
+  const [negativeMarks, setNegativeMarks] = useState<number>(0);
+  const [textAnswer, setTextAnswer] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch courses
         const coursesResponse = await fetch(
-          "http://localhost:3001/api/course/getCourses",
+          "http://13.233.33.133:3001/api/course/getCourses",
           {
             headers: {
               "Content-Type": "application/json",
@@ -70,10 +80,48 @@ const AddQuestions = () => {
     );
   };
 
-  const handleCorrectOptionChange = (index: number) => {
+  const handleOptionImageChange = (index: number, file: File | null) => {
     setOptions((prev) =>
-      prev.map((opt, i) => ({ ...opt, is_correct: i === index }))
+      prev.map((opt, i) => (i === index ? { ...opt, image: file } : opt))
     );
+  };
+
+  const handleCorrectOptionChange = (index: number, isCorrect: boolean) => {
+    if (questionType === "radio") {
+      setOptions((prev) =>
+        prev.map((opt, i) => ({ ...opt, is_correct: i === index }))
+      );
+    } else if (questionType === "multiple_choice") {
+      // Updated
+      setOptions((prev) =>
+        prev.map((opt, i) =>
+          i === index ? { ...opt, is_correct: isCorrect } : opt
+        )
+      );
+    }
+  };
+
+  const handleQuestionTypeChange = (type: string) => {
+    setQuestionType(type);
+    // Reset options when question type changes
+    if (type !== "text") {
+      setOptions([
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+      ]);
+    } else {
+      setTextAnswer("");
+    }
+  };
+
+  const beforeUpload = (file: File) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("You can only upload image files!");
+    }
+    return isImage;
   };
 
   const handleSubmit = async () => {
@@ -84,20 +132,44 @@ const AddQuestions = () => {
 
     const formData = new FormData();
     formData.append("name", questionText);
-    formData.append("type", questionType.toLowerCase().replace(" ", "_"));
-    formData.append("course_id", selectedCourseId.toString());
     formData.append(
-      "options",
-      JSON.stringify(options.filter((opt) => opt.option_text.trim() !== ""))
-    );
+      "type",
+      questionType === "multiple_choice"
+        ? "multiple_choice"
+        : questionType.toLowerCase().replace(" ", "_")
+    ); // Updated
+    formData.append("course_id", selectedCourseId.toString());
+    formData.append("total_marks", totalMarks.toString());
+    formData.append("negative_marks", negativeMarks.toString());
 
-    if (imageFile) {
-      formData.append("image", imageFile);
+    if (questionType === "text") {
+      formData.append("correct_answer", JSON.stringify({ textAnswer }));
+      formData.append("options", JSON.stringify([]));
+    } else {
+      const optionsData = options.map((option) => ({
+        option_text: option.option_text,
+        is_correct: option.is_correct,
+      }));
+      formData.append("options", JSON.stringify(optionsData));
+
+      const imageOptions = options
+        .map((option) => option.image)
+        .filter((image) => image !== null);
+
+      imageOptions.forEach((image, index) => {
+        if (image) {
+          formData.append(`imageOptions[${index}]`, image);
+        }
+      });
+    }
+
+    if (questionImageFile) {
+      formData.append("image", questionImageFile);
     }
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/question/createQuestion",
+        "http://13.233.33.133:3001/api/question/createQuestion",
         {
           method: "POST",
           headers: {
@@ -150,19 +222,30 @@ const AddQuestions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item label="Add Question:" required>
-            <Input
+          <Form.Item label="Question:" required>
+            <TextArea
+              rows={4}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               placeholder="Enter your question"
             />
           </Form.Item>
+
           <Form.Item label="Upload Question Image (optional)">
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-            />
+            <Upload
+              beforeUpload={beforeUpload}
+              onChange={(info) => {
+                if (info.file.status !== "uploading") {
+                  setQuestionImageFile(info.file.originFileObj || null);
+                }
+              }}
+              showUploadList={false}
+            >
+              <Button icon={<UploadOutlined />}>Click to Upload</Button>
+              {questionImageFile && (
+                <span style={{ marginLeft: 8 }}>{questionImageFile.name}</span>
+              )}
+            </Upload>
           </Form.Item>
 
           <Form.Item
@@ -171,7 +254,7 @@ const AddQuestions = () => {
             rules={[{ required: true }]}
           >
             <Select
-              onChange={setQuestionType}
+              onChange={handleQuestionTypeChange}
               value={questionType}
               placeholder="Select"
             >
@@ -183,25 +266,86 @@ const AddQuestions = () => {
             </Select>
           </Form.Item>
 
-          {questionType === "radio" && (
+          <Form.Item label="Total Marks" required>
+            <InputNumber
+              min={1}
+              value={totalMarks}
+              onChange={(value) => setTotalMarks(value || 1)}
+            />
+          </Form.Item>
+
+          <Form.Item label="Negative Marks">
+            <InputNumber
+              min={0}
+              value={negativeMarks}
+              onChange={(value) => setNegativeMarks(value || 0)}
+            />
+          </Form.Item>
+
+          {(questionType === "radio" || questionType === "multiple_choice") && (
             <>
               {options.map((option, index) => (
-                <Form.Item key={index} label={`Answer Option ${index + 1}:`}>
-                  <Input
-                    value={option.option_text}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    placeholder={`Enter option ${index + 1}`}
-                  />
-                  <input
-                    type="radio"
-                    name="correctOption"
-                    checked={option.is_correct}
-                    onChange={() => handleCorrectOptionChange(index)}
-                  />
-                  Correct Answer
-                </Form.Item>
+                <div key={index} style={{ marginBottom: 16 }}>
+                  <Form.Item label={`Option ${index + 1}`}>
+                    <Input
+                      value={option.option_text}
+                      onChange={(e) =>
+                        handleOptionChange(index, e.target.value)
+                      }
+                      placeholder={`Enter option ${index + 1}`}
+                    />
+                  </Form.Item>
+                  <Form.Item>
+                    <input
+                      type={questionType === "radio" ? "radio" : "checkbox"} // This line is key
+                      checked={option.is_correct}
+                      onChange={(e) =>
+                        handleCorrectOptionChange(index, e.target.checked)
+                      }
+                      style={{ marginRight: 8 }}
+                      name={
+                        questionType === "radio"
+                          ? "correctOption"
+                          : `correctOption${index}`
+                      } // Group radios, separate checkboxes
+                    />
+                    Mark as Correct Answer
+                  </Form.Item>
+                  <Form.Item label="Option Image (optional)">
+                    <Upload
+                      beforeUpload={beforeUpload}
+                      onChange={(info) => {
+                        if (info.file.status !== "uploading") {
+                          handleOptionImageChange(
+                            index,
+                            info.file.originFileObj || null
+                          );
+                        }
+                      }}
+                      showUploadList={false}
+                    >
+                      <Button icon={<UploadOutlined />}>Upload Image</Button>
+                      {option.image && (
+                        <span style={{ marginLeft: 8 }}>
+                          {option.image.name}
+                        </span>
+                      )}
+                    </Upload>
+                  </Form.Item>
+                </div>
               ))}
             </>
+          )}
+
+          {questionType === "text" && (
+            <Form.Item label="Expected Answer (for reference):">
+              <TextArea
+                rows={4}
+                value={textAnswer}
+                onChange={(e) => setTextAnswer(e.target.value)}
+                placeholder="Enter the expected answer for text questions"
+              />
+            </Form.Item>
           )}
 
           <Button type="primary" htmlType="submit" className="mt-4">

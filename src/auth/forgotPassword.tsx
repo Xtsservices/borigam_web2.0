@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Input, Button, Typography, message } from "antd";
 import { MailOutlined } from "@ant-design/icons";
-import borigam_profile from "../assets//borigam-new.png";
+import borigam_profile from "../assets/borigam_profile.png";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 

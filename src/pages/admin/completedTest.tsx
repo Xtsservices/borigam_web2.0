@@ -1,68 +1,40 @@
 import { useEffect, useState } from "react";
-import { Table, Spin, Button } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Table, Spin } from "antd";
+// import { useNavigate } from "react-router-dom";
 import LayoutWrapper from "../../components/adminlayout/layoutWrapper";
 
 interface TestResult {
+  user_id: number;
+  firstname: string;
+  lastname: string;
   test_id: number;
   test_name: string;
-  duration: number;
-  created_at: string;
-  start_date: string;
-  end_date: string;
-  subject_id: number;
-  subject_name: string;
-  result_id: number;
   total_questions: number;
   attempted: number;
+  unattempted: number;
   correct: number;
   wrong: number;
   final_score: string;
   final_result: string;
-}
-
-interface StudentTestData {
-  student_id: number;
-  firstname: string;
-  lastname: string;
-  email: string;
-  countrycode: string;
-  mobileno: string;
-  status: number;
-  college_id: number | null;
-  college_name: string | null;
-  courses: Array<{
-    course_id: number;
-    course_name: string;
-  }>;
-  batches: Array<{
-    batch_id: number;
-    end_date: number;
-    batch_name: string;
-    start_date: number;
-  }>;
-  tests: {
-    assignedTests: TestResult[];
-    completdTests: TestResult[];
-    openTest: TestResult[];
-  };
+  marks_awarded: string;
+  marks_deducted: string;
 }
 
 const CompletedTest = () => {
   const [loading, setLoading] = useState<boolean>(true);
-  const [testData, setTestData] = useState<StudentTestData | null>(null);
-  const navigate = useNavigate();
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  // const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    fetchTestData();
+    fetchTestResults();
   }, []);
 
-  const fetchTestData = async () => {
+  const fetchTestResults = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
+        "http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests",
         {
           method: "GET",
           headers: {
@@ -77,48 +49,64 @@ const CompletedTest = () => {
       }
 
       const data = await response.json();
-      setTestData(data.data);
+      setTestResults(data.results || []);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching test data:", error);
+      console.error("Error fetching test results:", error);
       setLoading(false);
     }
   };
 
-  const formatDate = (timestamp: string) => {
-    return new Date(parseInt(timestamp) * 1000).toLocaleDateString();
-  };
-
   const columns = [
+    {
+      title: "Student Name",
+      key: "student_name",
+      render: (record: TestResult) => `${record.firstname} ${record.lastname}`,
+    },
     {
       title: "Test Name",
       dataIndex: "test_name",
       key: "test_name",
     },
     {
-      title: "Subject",
-      dataIndex: "subject_name",
-      key: "subject_name",
+      title: "Total Questions",
+      dataIndex: "total_questions",
+      key: "total_questions",
     },
     {
-      title: "Duration (mins)",
-      dataIndex: "duration",
-      key: "duration",
+      title: "Attempted",
+      dataIndex: "attempted",
+      key: "attempted",
     },
     {
-      title: "Start Date",
-      key: "start_date",
-      render: (record: TestResult) => formatDate(record.start_date),
+      title: "Unattempted",
+      dataIndex: "unattempted",
+      key: "unattempted",
     },
     {
-      title: "End Date",
-      key: "end_date",
-      render: (record: TestResult) => formatDate(record.end_date),
+      title: "Correct",
+      dataIndex: "correct",
+      key: "correct",
+    },
+    {
+      title: "Wrong",
+      dataIndex: "wrong",
+      key: "wrong",
     },
     {
       title: "Score",
       key: "final_score",
       render: (record: TestResult) => `${record.final_score}%`,
+    },
+    {
+      title: "Marks Awarded",
+      dataIndex: "marks_awarded",
+      key: "marks_awarded",
+    },
+    {
+      title: "Marks Deducted",
+      dataIndex: "marks_deducted",
+      key: "marks_deducted",
     },
     {
       title: "Result",
@@ -128,30 +116,37 @@ const CompletedTest = () => {
         <span style={{ color: text === "Pass" ? "green" : "red" }}>{text}</span>
       ),
     },
-    {
-      title: "Action",
-      key: "action",
-      render: (record: TestResult) => (
-        <Button
-          type="primary"
-          onClick={() => navigate(`/test-result/${record.test_id}`)}
-        >
-          View Result
-        </Button>
-      ),
-    },
+    // {
+    //   title: "Action",
+    //   key: "action",
+    //   render: (record: TestResult) => (
+    //     <Button
+    //       type="primary"
+    //       onClick={() => navigate(`/test-result/${record.test_id}`)}
+    //     >
+    //       View Details
+    //     </Button>
+    //   ),
+    // },
   ];
 
   return (
-    <LayoutWrapper pageTitle={"BORIGAM / Completed Test"}>
+    <LayoutWrapper pageTitle={"BORIGAM / Completed Tests"}>
       <div className="completed-test" style={{ padding: "20px" }}>
         {loading ? (
-          <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }} />
+          <Spin
+            size="large"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "20px",
+            }}
+          />
         ) : (
           <Table
-            dataSource={testData?.tests?.completdTests || []}
+            dataSource={testResults}
             columns={columns}
-            rowKey="test_id"
+            rowKey={(record) => `${record.user_id}-${record.test_id}`}
             bordered
             pagination={{ pageSize: 10 }}
             style={{ marginTop: "20px" }}

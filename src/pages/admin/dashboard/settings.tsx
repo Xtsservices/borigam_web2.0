@@ -2,19 +2,23 @@ import { useEffect, useState } from "react";
 import {
   Card,
   Button,
-  Typography,
-  List,
-  Tabs,
+  // Typography,
+  // List,
+  // Tabs,
   Modal,
   Input,
   Form,
   message,
   Popconfirm,
+  Space,
+  DatePicker,
 } from "antd";
+import { Table } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
-
-const { TabPane } = Tabs;
+import moment from "moment";
+import { useNavigate } from "react-router-dom";
+// const { TabPane } = Tabs;
 
 interface Course {
   id: number;
@@ -48,9 +52,19 @@ interface Batch {
   end_date: string;
 }
 
+interface EditData {
+  id: number;
+  name: string;
+  start_date?: string;
+  end_date?: string;
+  startMoment?: moment.Moment | null;
+  endMoment?: moment.Moment | null;
+}
+
 const Settings: React.FC = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [tests, setTests] = useState<Test[]>([]);
+  const [, setTests] = useState<Test[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [courseName, setCourseName] = useState("");
 
@@ -68,7 +82,7 @@ const Settings: React.FC = () => {
     }
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           method: "GET",
           headers: {
@@ -96,15 +110,151 @@ const Settings: React.FC = () => {
   });
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editType, setEditType] = useState<"course" | "batch" | null>(null);
-  const [editData, setEditData] = useState<{ id: number; name: string }>({
+  const [editData, setEditData] = useState<EditData>({
     id: 0,
     name: "",
+    startMoment: null,
+    endMoment: null,
   });
 
+  const courseColumns = [
+    {
+      title: "Course Name",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_text: string, record: Course) => (
+        <Space size="middle">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEditClick("course", record.id, record.name)}
+            style={{ color: "#8B5EAB" }}
+          />
+          <Popconfirm
+            title="Are you sure to delete this course?"
+            onConfirm={() => handleDelete("course", record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              style={{ color: "#ff4d4f" }}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const formatDateToDDMMYYYY = (dateValue: string | number) => {
+    if (!dateValue) return "-";
+
+    try {
+      // First check if it's a Unix timestamp (number in seconds)
+      if (typeof dateValue === "number" || /^\d+$/.test(dateValue.toString())) {
+        // Convert Unix timestamp (seconds) to milliseconds
+        const date = moment.unix(Number(dateValue));
+        return date.format("DD-MM-YYYY");
+      }
+
+      // Try parsing as ISO string or other formats
+      const date = moment(
+        dateValue,
+        ["DD-MM-YYYY", "YYYY-MM-DD", moment.ISO_8601],
+        true
+      );
+
+      if (date.isValid()) {
+        return date.format("DD-MM-YYYY");
+      }
+
+      // If all parsing fails, return original value
+      return dateValue.toString();
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return dateValue.toString();
+    }
+  };
+
+  const batchColumns = [
+    {
+      title: "Batch Name",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Course",
+      dataIndex: "course_name",
+      key: "course_name",
+    },
+    {
+      title: "Start Date",
+      dataIndex: "start_date",
+      key: "start_date",
+      render: (date: string | number) => formatDateToDDMMYYYY(date),
+    },
+    {
+      title: "End Date",
+      dataIndex: "end_date",
+      key: "end_date",
+      render: (date: string | number) => formatDateToDDMMYYYY(date),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_text: string, record: Batch) => (
+        <Space size="middle">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() =>
+              handleEditClick(
+                "batch",
+                record.batch_id,
+                record.name,
+                record.start_date,
+                record.end_date
+              )
+            }
+            style={{ color: "#8B5EAB" }}
+          />
+          <Popconfirm
+            title="Are you sure to delete this batch?"
+            onConfirm={() => handleDelete("batch", record.batch_id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              style={{ color: "#ff4d4f" }}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (record: Batch) => (
+        <Button
+          type="link"
+          onClick={() => navigate(`/dashboard/batch-students/batchIds=${record.batch_id}`)}
+        >
+          View Students
+        </Button>
+      ),
+    },
+  ];
   const fetchTests = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/question/viewAllTests",
+        "http://13.233.33.133:3001/api/question/viewAllTests",
         {
           method: "GET",
           headers: {
@@ -125,7 +275,7 @@ const Settings: React.FC = () => {
   const fetchBatches = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/viewAllBatches",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -140,48 +290,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleAddBatch = async () => {
-    const token = localStorage.getItem("token");
-    if (
-      !newBatch.name ||
-      !newBatch.course_id ||
-      !newBatch.start_date ||
-      !newBatch.end_date
-    ) {
-      message.warning("Please fill all fields");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        "http://localhost:3001/api/course/createBatch",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: token || "",
-          },
-          body: JSON.stringify(newBatch),
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to create batch");
-
-      message.success("Batch added successfully");
-      setNewBatch({
-        name: "",
-        course_id: undefined,
-        start_date: "",
-        end_date: "",
-      });
-      setIsBatchModalVisible(false);
-      fetchBatches();
-    } catch (error) {
-      console.error("Error creating batch:", error);
-      message.error("Error creating batch");
-    }
-  };
-
   const handleAddCourse = async () => {
     const token = localStorage.getItem("token");
     if (!courseName.trim()) {
@@ -191,7 +299,7 @@ const Settings: React.FC = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/createCourse",
+        "http://13.233.33.133:3001/api/course/createCourse",
         {
           method: "POST",
           headers: {
@@ -219,10 +327,40 @@ const Settings: React.FC = () => {
   const handleEditClick = (
     type: "course" | "batch",
     id: number,
-    name: string
+    name: string,
+    start_date?: string,
+    end_date?: string
   ) => {
     setEditType(type);
-    setEditData({ id, name });
+
+    if (type === "batch") {
+      // Parse dates strictly in DD-MM-YYYY format
+      const startMoment =
+        start_date && moment(start_date, "DD-MM-YYYY", true).isValid()
+          ? moment(start_date, "DD-MM-YYYY")
+          : null;
+      const endMoment =
+        end_date && moment(end_date, "DD-MM-YYYY", true).isValid()
+          ? moment(end_date, "DD-MM-YYYY")
+          : null;
+
+      setEditData({
+        id,
+        name,
+        start_date: startMoment?.format("DD-MM-YYYY") || "",
+        end_date: endMoment?.format("DD-MM-YYYY") || "",
+        startMoment,
+        endMoment,
+      });
+    } else {
+      setEditData({
+        id,
+        name,
+        startMoment: null,
+        endMoment: null,
+      });
+    }
+
     setIsEditModalVisible(true);
   };
 
@@ -235,18 +373,38 @@ const Settings: React.FC = () => {
 
     try {
       let url = "";
-      let body = {};
+      let body: any = {
+        id: editData.id,
+        name: editData.name,
+      };
 
-      if (editType === "course") {
-        url = `http://localhost:3001/api/course/updateCourse/${editData.id}`;
-        body = { name: editData.name };
+      if (editType === "batch") {
+        // Validate date format before submitting
+        if (
+          editData.start_date &&
+          !/^\d{2}-\d{2}-\d{4}$/.test(editData.start_date)
+        ) {
+          throw new Error("Invalid start_date format. Use DD-MM-YYYY.");
+        }
+        if (
+          editData.end_date &&
+          !/^\d{2}-\d{2}-\d{4}$/.test(editData.end_date)
+        ) {
+          throw new Error("Invalid end_date format. Use DD-MM-YYYY.");
+        }
+
+        url = `http://13.233.33.133:3001/api/course/updateBatch`;
+        body = {
+          ...body,
+          start_date: editData.start_date,
+          end_date: editData.end_date,
+        };
       } else {
-        url = `http://localhost:3001/api/course/updateBatch/${editData.id}`;
-        body = { name: editData.name };
+        url = `http://13.233.33.133:3001/api/course/updateCourse`;
       }
 
       const response = await fetch(url, {
-        method: "PUT",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           token,
@@ -254,20 +412,20 @@ const Settings: React.FC = () => {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) throw new Error("Failed to update");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update");
+      }
 
-      message.success(`${editType} updated successfully`);
+      const result = await response.json();
+      message.success(result.message || `${editType} updated successfully`);
       setIsEditModalVisible(false);
 
       // Refresh data
-      if (editType === "course") {
-        fetchCourses();
-      } else {
-        fetchBatches();
-      }
-    } catch (error) {
+      editType === "course" ? fetchCourses() : fetchBatches();
+    } catch (error: any) {
       console.error(`Error updating ${editType}:`, error);
-      message.error(`Error updating ${editType}`);
+      message.error(error.message || `Error updating ${editType}`);
     }
   };
 
@@ -281,11 +439,11 @@ const Settings: React.FC = () => {
     try {
       const url =
         type === "course"
-          ? `http://localhost:3001/api/course/deleteCourse/${id}`
-          : `http://localhost:3001/api/course/deleteBatch/${id}`;
+          ? `http://13.233.33.133:3001/api/course/deleteCourse?id=${id}`
+          : `http://13.233.33.133:3001/api/course/deleteBatch?id=${id}`;
 
       const response = await fetch(url, {
-        method: "DELETE",
+        method: "GET", // Changed from DELETE to GET
         headers: {
           "Content-Type": "application/json",
           token,
@@ -294,7 +452,8 @@ const Settings: React.FC = () => {
 
       if (!response.ok) throw new Error("Failed to delete");
 
-      message.success(`${type} deleted successfully`);
+      const result = await response.json();
+      message.success(result.message || `${type} deleted successfully`);
 
       // Refresh data
       if (type === "course") {
@@ -308,39 +467,47 @@ const Settings: React.FC = () => {
     }
   };
 
-  const renderTests = (filteredTests: Test[]) =>
-    Array.isArray(filteredTests) &&
-    filteredTests.map((test) => (
-      <div key={test.test_id} style={{ marginBottom: "20px" }}>
-        <Typography.Title level={5}>{test.test_name}</Typography.Title>
-        <List
-          bordered
-          dataSource={test.questions}
-          renderItem={(question) => (
-            <List.Item>
-              <div>
-                <Typography.Text strong>{question.name}</Typography.Text>
-                {Array.isArray(question.options) &&
-                  question.options.length > 0 && (
-                    <List
-                      size="small"
-                      dataSource={question.options}
-                      renderItem={(option) => (
-                        <List.Item>
-                          {option.option_text}{" "}
-                          {option.is_correct && (
-                            <strong>(Correct Answer)</strong>
-                          )}
-                        </List.Item>
-                      )}
-                    />
-                  )}
-              </div>
-            </List.Item>
-          )}
-        />
-      </div>
-    ));
+  const handleAddBatch = async () => {
+    const token = localStorage.getItem("token");
+    if (
+      !newBatch.name ||
+      !newBatch.course_id ||
+      !newBatch.start_date ||
+      !newBatch.end_date
+    ) {
+      message.warning("Please fill all fields");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://13.233.33.133:3001/api/course/createBatch",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify(newBatch),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to create batch");
+
+      message.success("Batch added successfully");
+      setNewBatch({
+        name: "",
+        course_id: undefined,
+        start_date: "",
+        end_date: "",
+      });
+      setIsBatchModalVisible(false);
+      fetchBatches();
+    } catch (error) {
+      console.error("Error creating batch:", error);
+      message.error("Error creating batch");
+    }
+  };
 
   return (
     <LayoutWrapper pageTitle="BORIGAM / Settings">
@@ -372,63 +539,15 @@ const Settings: React.FC = () => {
               marginBottom: "20px",
             }}
           >
-            View Courses +
+            Add Course +
           </Button>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: "16px",
-            }}
-          >
-            {Array.isArray(courses) &&
-              courses.map((course) => (
-                <div key={course.id} style={{ position: "relative" }}>
-                  <Button
-                    style={{
-                      width: "200px",
-                      height: "100px",
-                      fontSize: "22px",
-                      padding: "0",
-                    }}
-                  >
-                    {course.name}
-                  </Button>
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      right: 0,
-                      display: "flex",
-                    }}
-                  >
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      style={{ color: "#8B5EAB" }}
-                      onClick={() =>
-                        handleEditClick("course", course.id, course.name)
-                      }
-                    />
-                    <Popconfirm
-                      title="Are you sure to delete this course?"
-                      onConfirm={() => handleDelete("course", course.id)}
-                      okText="Yes"
-                      cancelText="No"
-                    >
-                      <Button
-                        type="text"
-                        icon={<DeleteOutlined />}
-                        style={{ color: "#ff4d4f" }}
-                      />
-                    </Popconfirm>
-                  </div>
-                </div>
-              ))}
-          </div>
+          <Table
+            dataSource={courses}
+            columns={courseColumns}
+            rowKey="id"
+            pagination={false}
+          />
         </Card>
         <Card
           style={{
@@ -449,70 +568,18 @@ const Settings: React.FC = () => {
               marginBottom: "20px",
             }}
           >
-            View Batches +
+            Add Batch +
           </Button>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: "16px",
-            }}
-          >
-            {Array.isArray(batches) &&
-              batches.map((batch) => (
-                <div key={batch.batch_id} style={{ position: "relative" }}>
-                  <Button
-                    style={{
-                      width: "250px",
-                      height: "120px",
-                      fontSize: "21px",
-                      textAlign: "left",
-                      padding: "10px",
-                      whiteSpace: "normal",
-                    }}
-                  >
-                    <strong>{batch.name}</strong>
-                    <br />
-                    {batch.course_name}
-                  </Button>
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      right: 0,
-                      display: "flex",
-                    }}
-                  >
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      style={{ color: "#8B5EAB" }}
-                      onClick={() =>
-                        handleEditClick("batch", batch.batch_id, batch.name)
-                      }
-                    />
-                    <Popconfirm
-                      title="Are you sure to delete this batch?"
-                      onConfirm={() => handleDelete("batch", batch.batch_id)}
-                      okText="Yes"
-                      cancelText="No"
-                    >
-                      <Button
-                        type="text"
-                        icon={<DeleteOutlined />}
-                        style={{ color: "#ff4d4f" }}
-                      />
-                    </Popconfirm>
-                  </div>
-                </div>
-              ))}
-          </div>
+          <Table
+            dataSource={batches}
+            columns={batchColumns}
+            rowKey="batch_id"
+            pagination={false}
+          />
         </Card>
 
-        <Card
+        {/* <Card
           style={{
             width: "49%",
             borderRadius: "10px",
@@ -547,7 +614,7 @@ const Settings: React.FC = () => {
               )}
             </TabPane>
           </Tabs>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Course Modal */}
@@ -570,6 +637,106 @@ const Settings: React.FC = () => {
       </Modal>
 
       {/* Batch Modal */}
+      <Modal
+        title={`Edit ${editType}`}
+        visible={isEditModalVisible}
+        onCancel={() => setIsEditModalVisible(false)}
+        onOk={handleEditSubmit}
+        okText="Save Changes"
+        cancelText="Cancel"
+        width={600} // Set a wider width for better date picker display
+      >
+        <Form layout="vertical">
+          <Form.Item
+            label={`${editType === "course" ? "Course" : "Batch"} Name`}
+            rules={[{ required: true, message: "This field is required" }]}
+          >
+            <Input
+              value={editData.name}
+              onChange={(e) =>
+                setEditData({ ...editData, name: e.target.value })
+              }
+              placeholder={`Enter ${editType} name`}
+            />
+          </Form.Item>
+
+          {editType === "batch" && (
+            <>
+              <Form.Item
+                label="Start Date"
+                rules={[
+                  { required: true, message: "Start date is required" },
+                  {
+                    validator: (_, value) => {
+                      if (!moment(value, "DD-MM-YYYY", true).isValid()) {
+                        return Promise.reject(
+                          new Error("Use DD-MM-YYYY format")
+                        );
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+              >
+                <DatePicker
+                  format="DD-MM-YYYY"
+                  value={editData.startMoment}
+                  onChange={(
+                    date: moment.Moment | null,
+                    dateString: string | string[]
+                  ) => {
+                    // Handle both string and string[] cases
+                    const formattedDate = Array.isArray(dateString)
+                      ? dateString[0]
+                      : dateString;
+                    setEditData({
+                      ...editData,
+                      start_date: formattedDate,
+                      startMoment: date,
+                    });
+                  }}
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+              <Form.Item
+                label="End Date"
+                rules={[
+                  { required: true, message: "End date is required" },
+                  {
+                    validator: (_, value) => {
+                      if (!moment(value, "DD-MM-YYYY", true).isValid()) {
+                        return Promise.reject(
+                          new Error("Use DD-MM-YYYY format")
+                        );
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+              >
+                <DatePicker
+                  format="DD-MM-YYYY"
+                  value={editData.endMoment}
+                  onChange={(
+                    date: moment.Moment | null,
+                    dateString: string | string[]
+                  ) => {
+                    const formattedDate = Array.isArray(dateString)
+                      ? dateString[0]
+                      : dateString;
+                    setEditData({
+                      ...editData,
+                      end_date: formattedDate,
+                      endMoment: date,
+                    });
+                  }}
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </>
+          )}
+        </Form>
+      </Modal>
       <Modal
         title="Add New Batch"
         visible={isBatchModalVisible}
@@ -630,29 +797,6 @@ const Settings: React.FC = () => {
                     .join("-"),
                 })
               }
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal
-        title={`Edit ${editType}`}
-        visible={isEditModalVisible}
-        onCancel={() => setIsEditModalVisible(false)}
-        onOk={handleEditSubmit}
-        okText="Save Changes"
-      >
-        <Form layout="vertical">
-          <Form.Item
-            label={`${editType === "course" ? "Course" : "Batch"} Name`}
-          >
-            <Input
-              value={editData.name}
-              onChange={(e) =>
-                setEditData({ ...editData, name: e.target.value })
-              }
-              placeholder={`Enter ${editType} name`}
             />
           </Form.Item>
         </Form>

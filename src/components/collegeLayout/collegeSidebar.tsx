@@ -1,11 +1,11 @@
 import { Layout, Menu, Button } from "antd";
 import {
   HomeOutlined,
-  SettingOutlined,
   LogoutOutlined,
-  BookOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "antd";
 import { useState } from "react";
 
@@ -13,8 +13,9 @@ const { Sider } = Layout;
 
 const CollegeSidebar = () => {
   const navigate = useNavigate();
-
+  const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleLogout = () => {
     setIsModalOpen(true);
@@ -30,89 +31,141 @@ const CollegeSidebar = () => {
     setIsModalOpen(false);
   };
 
+  const toggleSidebar = () => {
+    setCollapsed(!collapsed);
+  };
+
+  // Determine the selected key based on current route
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.includes("/college/dashboard")) return "home";
+    // if (path.includes("/settingscreen")) return "profile";
+    if (path.includes("/study-material")) return "StudyMaterial";
+    return "home";
+  };
+
   return (
     <Sider
-      width={80}
+      width={200}
+      collapsedWidth={60}
+      collapsible
+      collapsed={collapsed}
+      trigger={null}
       style={{
-        background: "#EFE4F0",
+        background: "white",
         display: "flex",
         flexDirection: "column",
+        justifyContent: "space-between",
+        height: "100vh",
+        position: "relative",
+        borderRight: "1px solid #f0f0f0",
+        boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
       }}
     >
-      <Menu
-        mode="vertical"
-        theme="light"
-        style={{ borderRight: 0 }}
-        items={[
-          {
-            key: "home",
-            icon: (
-              <HomeOutlined
-                style={{ fontSize: "30px" }}
-                onClick={() => navigate("/dashboard")}
-                name="Dashboard"
-              />
-            ),
-            style: {
-              textAlign: "center",
-              height: "64px",
+      <div style={{ width: "100%" }}>
+        {/* Collapse Button */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "16px 16px 8px",
+            borderBottom: "1px solid #f0f0f0",
+          }}
+        >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={toggleSidebar}
+            style={{
+              width: 32,
+              height: 32,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-            },
-          },
-          {
-            key: "profile",
-            icon: (
-              <SettingOutlined
-                style={{ fontSize: "30px" }}
-                onClick={()=> navigate("/settingscreen")} 
-                name="Settings"
-              />
-            ),
-            style: {
-              textAlign: "center",
-              height: "64px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            },
-          },
-          {
-            key: "StudyMaterial",
-            icon: (
-              <BookOutlined
-                style={{ fontSize: "30px" }}
-                onClick={() => navigate("/study-material")}
-                name="Study Material"
-              />
-            ),
-            style: {
-              textAlign: "center",
-              height: "64px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            },
-          },
-        ]}
-      />
+            }}
+          />
+        </div>
 
-      {/* Logout Button */}
-      <div style={{ padding: "10px", textAlign: "inherit" }}>
+        {/* Menu Items with bottom padding */}
+        <div style={{ paddingBottom: "20px" }}>
+          <Menu
+            mode="inline"
+            theme="light"
+            inlineCollapsed={collapsed}
+            selectedKeys={[getSelectedKey()]} // Set the active menu item
+            items={[
+              {
+                key: "home",
+                icon: <HomeOutlined style={{ fontSize: "20px" }} />,
+                label: "Dashboard",
+                onClick: () => navigate("/college/dashboard"),
+                style: {
+                  backgroundColor: location.pathname.includes("/college/dashboard")
+                    ? "rgba(102, 51, 153, 0.1)"
+                    : "transparent",
+                  borderLeft: location.pathname.includes("/college/dashboard")
+                    ? "purple"
+                    : "none",
+                },
+              },
+              // {
+              //   key: "profile",
+              //   icon: <SettingOutlined style={{ fontSize: "20px" }} />,
+              //   label: "Settings",
+              //   onClick: () => navigate("/settingscreen"),
+              //   style: {
+              //     backgroundColor: location.pathname.includes("/settingscreen")
+              //       ? "rgba(102, 51, 153, 0.1)"
+              //       : "transparent",
+              //     borderLeft: location.pathname.includes("/settingscreen")
+              //       ? "purple"
+              //       : "none",
+              //   },
+              // },
+              // {
+              //   key: "StudyMaterial",
+              //   icon: <BookOutlined style={{ fontSize: "20px" }} />,
+              //   label: "Study Material",
+              //   onClick: () => navigate("/study-material"),
+              //   style: {
+              //     backgroundColor: location.pathname.includes("/study-material")
+              //       ? "rgba(102, 51, 153, 0.1)"
+              //       : "transparent",
+              //     borderLeft: location.pathname.includes("/study-material")
+              //       ? "purple"
+              //       : "none",
+              //   },
+              // },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Logout Button - fixed at the bottom with margin */}
+      <div
+        style={{
+          padding: "16px",
+          textAlign: "center",
+          marginTop: "auto",
+          paddingBottom: "24px",
+        }}
+      >
         <Button
           type="text"
-          icon={<LogoutOutlined style={{ fontSize: "20px" }} />}
+          icon={<LogoutOutlined style={{ fontSize: "16px" }} />}
           onClick={handleLogout}
-          name="Logout"
           style={{
             width: "100%",
-            height: "64px",
+            height: "48px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: "8px",
+            padding: collapsed ? "0" : "0 16px",
           }}
-        />
+        >
+          {!collapsed && "Logout"}
+        </Button>
         <Modal
           title="Confirm Logout"
           open={isModalOpen}
