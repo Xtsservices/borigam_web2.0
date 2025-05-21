@@ -1,5 +1,5 @@
 import { Button, Col, Form, Input, Row, Select } from "antd";
-import borigam_profile from "../assets/borigam_profile.png";
+import borigam_profile from "../assets/borigam-new.png";
 import { useNavigate } from "react-router-dom";
 
 const { Option } = Select;

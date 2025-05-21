@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Input, Button, Typography } from "antd";
 import { MailOutlined , LockOutlined} from "@ant-design/icons";
-import borigam_profile from "../assets/borigam_profile.png";
+import borigam_profile from "../assets/borigam-new.png";
 
 const { Title, Text } = Typography;
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Divider } from "antd";
-import borigam_profile from "../../assets/borigam_profile.png";
+import borigam_profile from "../../assets/borigam-new.png";
 import { useNavigate } from "react-router-dom";
 
 const HomePage: React.FC = () => {
@@ -34,7 +34,7 @@ const HomePage: React.FC = () => {
         }}
       >
         <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginRight: "20px" }}>
-          <Button
+          {/* <Button
             type="primary"
             style={{
               backgroundColor: "#ffc107",
@@ -44,7 +44,7 @@ const HomePage: React.FC = () => {
             onClick={() => navigate("/enquirynow")}
           >
             Enquiry Now
-          </Button>
+          </Button> */}
           <Button
             type="primary"
             style={{
@@ -56,13 +56,13 @@ const HomePage: React.FC = () => {
           >
             Login
           </Button>
-          <Button
+          {/* <Button
             type="primary"
             style={{ color: "#000" }}
             onClick={() => navigate("/signup")}
           >
             Signup
-          </Button>
+          </Button> */}
         </div>
 
         {/* Divider Line */}

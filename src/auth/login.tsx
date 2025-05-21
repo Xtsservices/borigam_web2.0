@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Form, Input, Button, Row, Col, Typography, message , Alert} from "antd";
+import { Form, Input, Button, Row, Col, Typography, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./styles/signin.css";
-import borigam_profile from "../assets/borigam_profile.png";
+import borigam_profile from "../assets/borigam-new.png";
 import { Loginapi } from "../services/services/restApi";
 
 const { Title } = Typography;

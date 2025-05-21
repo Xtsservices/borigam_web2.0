@@ -16,7 +16,7 @@ import {
   SolutionOutlined,
 } from "@ant-design/icons";
 import "./styles/signup.css";
-import borigam_profile from "../assets/borigam_profile.png";
+import borigam_profile from "../assets/borigam-new.png";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
