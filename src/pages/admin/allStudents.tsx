@@ -80,12 +80,15 @@ const AllStudents: React.FC = () => {
 
   const showEditModal = (student: Student) => {
     setEditingStudent(student);
+    console.log("Editing student:", student.batches[0]?.batch_name);
     form.setFieldsValue({
       firstname: student.firstname,
       lastname: student.lastname,
       email: student.email,
       countrycode: student.countrycode,
       mobileno: student.mobileno,
+      batchName: student.batches[0]?.batch_name,
+      courseName: student.courses[0]?.course_name,
     });
     setIsModalVisible(true);
   };
@@ -125,7 +128,6 @@ const AllStudents: React.FC = () => {
       if (result.success) {
         message.success("Student updated successfully");
         fetchStudents();
-
       } else {
         throw new Error(result.message || "Failed to update student");
       }
@@ -255,6 +257,67 @@ const AllStudents: React.FC = () => {
   return (
     <LayoutWrapper pageTitle="BORIGAM / All Students ">
       <div
+        style={{
+          marginBottom: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "16px 20px",
+          background: "#f5f7fa",
+          borderRadius: 8,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: 20, color: "#222" }}>
+          👩‍🎓 Search Students
+        </div>
+        <Input.Search
+          placeholder="Search by name, email, batch, course, ID..."
+          allowClear
+          enterButton="Search"
+          style={{
+            width: 360,
+            background: "#fff",
+            borderRadius: 6,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+          }}
+          size="large"
+          onSearch={(value) => {
+            const searchText = value.trim().toLowerCase();
+            if (!searchText) {
+              fetchStudents();
+              return;
+            }
+            const filtered = students.filter((student) => {
+              const studentFields = `${student.firstname} ${student.lastname} ${
+                student.email
+              } ${student.countrycode} ${student.mobileno} ${
+                student.student_id
+              } ${student.college_name ?? ""}`.toLowerCase();
+              const courseFields = student.courses
+                .map((c) => `${c.course_id} ${c.course_name}`.toLowerCase())
+                .join(" ");
+              const batchFields = student.batches
+                .map((b) =>
+                  `${b.batch_id} ${b.batch_name} ${b.start_date} ${b.end_date}`.toLowerCase()
+                )
+                .join(" ");
+              return (
+                studentFields.includes(searchText) ||
+                courseFields.includes(searchText) ||
+                batchFields.includes(searchText)
+              );
+            });
+            setStudents(filtered);
+          }}
+          onChange={(e) => {
+            if (!e.target.value) {
+              fetchStudents();
+            }
+          }}
+        />
+      </div>
+      <div
         className="enrolled-students-container"
         style={{
           borderRadius: "10px",
@@ -300,7 +363,7 @@ const AllStudents: React.FC = () => {
         <Modal
           title="Edit Student Details"
           visible={isModalVisible}
-          onOk={handleUpdate}  
+          onOk={handleUpdate}
           onCancel={handleCancel}
           footer={[
             <Button key="back" onClick={handleCancel}>
@@ -331,24 +394,20 @@ const AllStudents: React.FC = () => {
             >
               <Input />
             </Form.Item>
-
-
-
             <Form.Item
-              name="Batch Name"
+              name="batchName"
               label="Batch Name"
-              rules={[{ required: true, message: "Please input last name!" }]}
+              rules={[{ required: true, message: "Please input Batch name!" }]}
             >
               <Input />
             </Form.Item>
             <Form.Item
-              name="Course Name"
+              name="courseName"
               label="Course Name"
-              rules={[{ required: true, message: "Please input last name!" }]}
+              rules={[{ required: true, message: "Please input Course Name!" }]}
             >
               <Input />
             </Form.Item>
-
 
             <Form.Item
               name="email"

@@ -23,6 +23,7 @@ const { Option } = Select;
 interface OptionType {
   option_id: number;
   option_text: string;
+  is_correct?: boolean;
 }
 
 interface Question {
@@ -59,6 +60,7 @@ const AddTest = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
   const [testType, setTestType] = useState<string>("");
+  const [testName, setTestName] = useState<string>("");
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const [selectedBatches, setSelectedBatches] = useState<number[]>([]);
   const [startDateTime, setStartDateTime] = useState<Dayjs | null>(null);
@@ -186,10 +188,10 @@ const AddTest = () => {
     const formattedStartDateTime = startDateTime.format("DD-MM-YYYY HH:mm:ss");
     const formattedEndDateTime = endDateTime.format("DD-MM-YYYY HH:mm:ss");
 
-    const duration = testType === "Mock Test" ? 180 : 30;
+    const duration = testType === "Regular Test" ? 30 : 60;
 
     const payload = {
-      name: testType,
+      name: testName,
       duration,
       course_id: selectedCourse,
       questions: selectedQuestions,
@@ -261,16 +263,16 @@ const AddTest = () => {
         <h2 className="text-2xl font-bold mb-4">Add Test</h2>
 
         <Form layout="vertical">
-            <Form.Item label="Enter Test Name:" required>
+          <Form.Item label="Enter Test Name:" required>
             <input
               type="text"
               className="ant-input"
               placeholder="Enter Test Name"
               style={{ width: "100%", marginBottom: "20px" }}
-              value={testType}
-              onChange={(e) => setTestType(e.target.value)}
+              value={testName}
+              onChange={(e) => setTestName(e.target.value)}
             />
-            </Form.Item>
+          </Form.Item>
           <Form.Item label="Select Test Timings:" required>
             <Select
               placeholder="Select Test Type"
@@ -278,11 +280,11 @@ const AddTest = () => {
               value={testType}
               style={{ width: "100%", marginBottom: "20px" }}
             >
-              <Option value="Regular Test">30 mins</Option>
-              <Option value="Regular Test">45 mins</Option>
-              <Option value="Regular Test">60 mins</Option>
-              <Option value="Regular Test">120 mins</Option>
-              <Option value="Mock Test">180 mins</Option>
+              <Option value="30">30 mins</Option>
+              <Option value="45">45 mins</Option>
+              <Option value="60">60 mins</Option>
+              <Option value="120">120 mins</Option>
+              <Option value="180">180 mins</Option>
             </Select>
           </Form.Item>
 
@@ -398,12 +400,49 @@ const AddTest = () => {
                     {Array.isArray(question.options) &&
                       question.options.map((option) => (
                         <p
-                          style={{ marginLeft: "20px", fontSize: "15px" }}
+                          style={{
+                            marginLeft: "20px",
+                            fontSize: "15px",
+                            fontWeight: option.is_correct ? "bold" : "normal",
+                            color: option.is_correct ? "#52c41a" : "inherit",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
                           key={option.option_id}
                         >
                           {option.option_text}
+                          {option.is_correct && (
+                            <Tag color="success" style={{ marginLeft: 8 }}>
+                              Correct
+                            </Tag>
+                          )}
                         </p>
                       ))}
+                  </div>
+                  <div
+                    style={{
+                      minWidth: "220px",
+                      maxWidth: "250px",
+                      background: "#fffbe6",
+                      borderLeft: "4px solid #faad14",
+                      padding: "10px 16px",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      marginLeft: "16px",
+                    }}
+                  >
+                    <div>
+                      <strong>Total Marks:</strong>{" "}
+                      {"total_marks" in question ? (question as any).total_marks : "N/A"}
+                    </div>
+                    <div>
+                      <strong>Negative Marks:</strong>{" "}
+                      {"negative_marks" in question ? (question as any).negative_marks : "N/A"}
+                    </div>
                   </div>
                   <Popconfirm
                     title="Are you sure you want to delete this question?"

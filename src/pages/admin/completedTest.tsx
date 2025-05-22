@@ -246,26 +246,36 @@ const CompletedTest = () => {
           gutter={[16, 16]}
           style={{ marginBottom: "20px", paddingBottom: "20px" }}
         >
-          <Col xs={24} sm={12} md={8} lg={6}>
+          <Col xs={24} sm={24} md={10} lg={8}>
             <Search
-              placeholder="Search by name or test"
+              placeholder="Search by student or test name"
               allowClear
-              enterButton
+              enterButton="Search"
+              size="large"
               onSearch={handleSearch}
               onChange={(e) => handleSearch(e.target.value)}
               value={filters.search}
+              style={{ width: "100%" }}
             />
           </Col>
-
-          <Col xs={24} sm={12} md={8} lg={6}>
+          <Col xs={24} sm={12} md={7} lg={5}>
             <Select
               style={{ width: "100%" }}
-              placeholder="Filter by course"
+              placeholder="Course"
               onChange={handleCourseChange}
               value={filters.courseId}
               loading={filterLoading}
               allowClear
-              onClear={() => handleCourseChange(null)}
+              size="large"
+              optionFilterProp="children"
+              showSearch
+              filterOption={(input, option) =>
+                typeof option?.children === "string"
+                  ? (option.children as string)
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  : false
+              }
             >
               {filterOptions.courses.map((course) => (
                 <Option key={course.id} value={course.id}>
@@ -274,15 +284,24 @@ const CompletedTest = () => {
               ))}
             </Select>
           </Col>
-          <Col xs={24} sm={12} md={8} lg={6}>
+          <Col xs={24} sm={12} md={7} lg={5}>
             <Select
               style={{ width: "100%" }}
-              placeholder="Filter by batch"
+              placeholder="Batch"
               onChange={handleBatchChange}
               value={filters.batchId}
               loading={filterLoading}
               allowClear
-              onClear={() => handleBatchChange(null)}
+              size="large"
+              optionFilterProp="children"
+              showSearch
+              filterOption={(input, option) =>
+                typeof option?.children === "string"
+                  ? (option.children as string)
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  : false
+              }
             >
               {filterOptions.batches.map((batch) => (
                 <Option key={batch.id} value={batch.id}>
@@ -291,14 +310,25 @@ const CompletedTest = () => {
               ))}
             </Select>
           </Col>
-          <Col xs={24} sm={12} md={8} lg={6}>
+          <Col
+            xs={24}
+            sm={24}
+            md={24}
+            lg={6}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+            }}
+          >
             <Button
               onClick={clearFilters}
-              style={{ width: "100%" }}
-              type="default"
+              style={{ width: "100%", height: "40px" }}
+              type="primary"
               danger
+              size="large"
             >
-              Clear Filters
+              Clear All Filters
             </Button>
           </Col>
         </Row>

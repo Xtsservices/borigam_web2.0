@@ -201,7 +201,7 @@ const AddQuestions = () => {
 
       message.success("Question submitted successfully!");
       setIsModalVisible(false);
-      
+
       // Reset form
       setSelectedCourse("");
       setSelectedCourseId(null);
@@ -221,6 +221,7 @@ const AddQuestions = () => {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
+    window.location.reload();
   };
 
   const handlePreSubmit = () => {
@@ -386,11 +387,7 @@ const AddQuestions = () => {
             </Form.Item>
           )}
 
-          <Button
-            type="primary"
-            className="mt-4"
-            onClick={handlePreSubmit}
-          >
+          <Button type="primary" className="mt-4" onClick={handlePreSubmit}>
             Submit
           </Button>
         </Form>

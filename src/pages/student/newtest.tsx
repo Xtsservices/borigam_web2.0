@@ -14,7 +14,6 @@ import {
   Divider,
   Checkbox,
 } from "antd";
-import StudentLayoutWrapper from "../../components/studentlayout/studentlayoutWrapper";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import TextArea from "antd/es/input/TextArea";
@@ -201,39 +200,39 @@ const TestScreen: React.FC = () => {
     }
   }, [selectedAnswers]);
 
-const submitFinalResult = async () => {
-  if (!testId) return;
-  
-  try {
-    setSubmitting(true);
-    // Auto-save the current answer before submitting
-    const currentQ = questions[currentQuestionIndex];
-    if (currentQ) {
-      const answer = selectedAnswers[currentQ.id];
-      if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
-        await saveAnswerToServer(currentQ.id, answer);
+  const submitFinalResult = async () => {
+    if (!testId) return;
+
+    try {
+      setSubmitting(true);
+      // Auto-save the current answer before submitting
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ) {
+        const answer = selectedAnswers[currentQ.id];
+        if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
+          await saveAnswerToServer(currentQ.id, answer);
+        }
       }
+
+      const response = await axios.get(
+        `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+        axiosConfig
+      );
+      setFinalResult(response.data.result);
+      setIsFinalModalVisible(true);
+
+      // Clean up localStorage
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("testDuration");
+
+      setTimerActive(false);
+    } catch (error) {
+      console.error("Failed to submit final result:", error);
+      message.error("Failed to submit final result");
+    } finally {
+      setSubmitting(false);
     }
-    
-    const response = await axios.get(
-      `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
-      axiosConfig
-    );
-    setFinalResult(response.data.result);
-    setIsFinalModalVisible(true);
-    
-    // Clean up localStorage
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem("testDuration");
-    
-    setTimerActive(false);
-  } catch (error) {
-    console.error("Failed to submit final result:", error);
-    message.error("Failed to submit final result");
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -286,7 +285,10 @@ const submitFinalResult = async () => {
       );
 
       // Check if all questions are answered
-      if (response.data.pendingsubmission?.unanswered === 1) {
+      if (
+        response.data.pendingsubmission?.total_unanswered === 0 &&
+        response.data.pendingsubmission?.total_open === 0
+      ) {
         // Submit final result using GET
         const finalResponse = await axios.get(
           `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
@@ -388,138 +390,180 @@ const submitFinalResult = async () => {
 
   if (loading) {
     return (
-      <StudentLayoutWrapper pageTitle="Test">
-        <div style={{ padding: "20px", textAlign: "center" }}>
-          <Spin size="large" />
-          <Text>Loading test information...</Text>
-        </div>
-      </StudentLayoutWrapper>
+      <div style={{ padding: "20px", textAlign: "center" }}>
+        <Spin size="large" />
+        <Text>Loading test information...</Text>
+      </div>
     );
   }
   if (!testStarted && !loading && (!test || questions.length === 0)) {
     return (
-      <StudentLayoutWrapper pageTitle="Test">
-        <div
+      <div
+        style={{
+          height: "70vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "column",
+        }}
+      >
+        <Card
           style={{
-            height: "70vh",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "column",
+            textAlign: "center",
+            padding: "40px",
+            border: "2px dashed #FFA500",
+            borderRadius: "16px",
+            backgroundColor: "#fffbe6",
           }}
         >
-          <Card
-            style={{
-              textAlign: "center",
-              padding: "40px",
-              border: "2px dashed #FFA500",
-              borderRadius: "16px",
-              backgroundColor: "#fffbe6",
-            }}
-          >
-            <Title level={2} style={{ color: "#fa8c16" }}>
-              No Tests Available
-            </Title>
-            <Text type="secondary">
-              There are currently no tests available for you to take.
-              <br />
-              Please check back later or contact your instructor.
-            </Text>
-            <div style={{ marginTop: 20 }}>
-              <Button
-                type="primary"
-                onClick={() => navigate("/student/dashboard")}
-              >
-                Return to Dashboard
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </StudentLayoutWrapper>
+          <Title level={2} style={{ color: "#fa8c16" }}>
+            No Tests Available
+          </Title>
+          <Text type="secondary">
+            There are currently no tests available for you to take.
+            <br />
+            Please check back later or contact your instructor.
+          </Text>
+          <div style={{ marginTop: 20 }}>
+            <Button
+              type="primary"
+              onClick={() => navigate("/student/dashboard")}
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <StudentLayoutWrapper pageTitle="Test">
-      <div style={{ padding: "20px" }}>
-        <Row gutter={16}>
-          <Col xs={24} lg={18}>
-            <Card>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "10px",
-                }}
-              >
-                <Text>Total Questions: {questions.length}</Text>
-                <Text>
-                  Attempted:{" "}
-                  {
-                    Object.values(selectedAnswers).filter(
-                      (answer) =>
-                        answer.optionId !== null || answer.text !== null
-                    ).length
-                  }
-                  /{questions.length}
-                </Text>
-                <Text style={{ color: "red" }}>
-                  Time Remaining: {formatTime(timeLeft)}
-                </Text>
-              </div>
-              <Divider />
-              <div style={{ marginBottom: 20 }}>
-                <Title level={4}>
-                  {currentQuestionIndex + 1}. {currentQuestion?.name}
-                </Title>
-                {currentQuestion?.image && (
-                  <img
-                    src={currentQuestion.image}
-                    alt="Question visual"
-                    style={{
-                      width: "100%",
-                      height: "200px",
-                      objectFit: "contain",
-                    }}
-                  />
-                )}
+    <div style={{ padding: "40px" }}>
+      <Row gutter={16}>
+        <Col xs={24} lg={18}>
+          <Card>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "10px",
+              }}
+            >
+              <Text>Total Questions: {questions.length}</Text>
+              <Text>
+                Attempted:{" "}
+                {
+                  Object.values(selectedAnswers).filter(
+                    (answer) => answer.optionId !== null || answer.text !== null
+                  ).length
+                }
+                /{questions.length}
+              </Text>
+              <Text style={{ color: "red" }}>
+                Time Remaining: {formatTime(timeLeft)}
+              </Text>
+            </div>
+            <Divider />
+            <div style={{ marginBottom: 20 }}>
+              <Title level={4}>
+                {currentQuestionIndex + 1}. {currentQuestion?.name}
+              </Title>
+              {currentQuestion?.image && (
+                <img
+                  src={currentQuestion.image}
+                  alt="Question visual"
+                  style={{
+                    width: "100%",
+                    height: "200px",
+                    objectFit: "contain",
+                  }}
+                />
+              )}
 
-                {currentQuestion?.type === "text" ? (
-                  <TextArea
-                    placeholder="Type your answer here..."
-                    value={selectedAnswers[currentQuestion.id]?.text || ""}
-                    onChange={(e) =>
-                      setSelectedAnswers({
-                        ...selectedAnswers,
-                        [currentQuestion.id]: {
-                          optionId: null,
-                          text: e.target.value,
-                        },
-                      })
-                    }
-                    style={{ marginTop: 16 }}
-                    rows={4}
-                  />
-                ) : currentQuestion?.type === "radio" ? (
-                  <Radio.Group
-                    onChange={(e) =>
-                      setSelectedAnswers({
-                        ...selectedAnswers,
-                        [currentQuestion.id]: {
-                          optionId: e.target.value,
-                          text: null,
-                        },
-                      })
-                    }
-                    value={
-                      selectedAnswers[currentQuestion.id]?.optionId || null
-                    }
-                  >
-                    {currentQuestion?.options.map((option) => (
-                      <Radio
-                        key={option.id}
-                        value={option.id}
-                        style={{ display: "block", margin: "10px 0" }}
+              {currentQuestion?.type === "text" ? (
+                <TextArea
+                  placeholder="Type your answer here..."
+                  value={selectedAnswers[currentQuestion.id]?.text || ""}
+                  onChange={(e) =>
+                    setSelectedAnswers({
+                      ...selectedAnswers,
+                      [currentQuestion.id]: {
+                        optionId: null,
+                        text: e.target.value,
+                      },
+                    })
+                  }
+                  style={{ marginTop: 16 }}
+                  rows={4}
+                />
+              ) : currentQuestion?.type === "radio" ? (
+                <Radio.Group
+                  onChange={(e) =>
+                    setSelectedAnswers({
+                      ...selectedAnswers,
+                      [currentQuestion.id]: {
+                        optionId: e.target.value,
+                        text: null,
+                      },
+                    })
+                  }
+                  value={selectedAnswers[currentQuestion.id]?.optionId || null}
+                >
+                  {currentQuestion?.options.map((option) => (
+                    <Radio
+                      key={option.id}
+                      value={option.id}
+                      style={{ display: "block", margin: "10px 0" }}
+                    >
+                      {option.option_text}
+                      {option.option_image && (
+                        <img
+                          src={option.option_image}
+                          alt="Option visual"
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "100px",
+                            marginLeft: "10px",
+                          }}
+                        />
+                      )}
+                    </Radio>
+                  ))}
+                </Radio.Group>
+              ) : currentQuestion?.type === "multiple_choice" ? (
+                <div>
+                  {currentQuestion?.options.map((option) => (
+                    <div key={option.id} style={{ margin: "10px 0" }}>
+                      <Checkbox
+                        checked={
+                          selectedAnswers[
+                            currentQuestion.id
+                          ]?.optionIds?.includes(option.id) || false
+                        }
+                        onChange={(e) => {
+                          const currentSelected =
+                            selectedAnswers[currentQuestion.id]?.optionIds ||
+                            [];
+                          let newOptionIds;
+
+                          if (e.target.checked) {
+                            newOptionIds = [...currentSelected, option.id];
+                          } else {
+                            newOptionIds = currentSelected.filter(
+                              (id) => id !== option.id
+                            );
+                          }
+
+                          setSelectedAnswers({
+                            ...selectedAnswers,
+                            [currentQuestion.id]: {
+                              ...selectedAnswers[currentQuestion.id],
+                              optionIds: newOptionIds,
+                              optionId: null,
+                              text: null,
+                            },
+                          });
+                        }}
                       >
                         {option.option_text}
                         {option.option_image && (
@@ -533,203 +577,143 @@ const submitFinalResult = async () => {
                             }}
                           />
                         )}
-                      </Radio>
-                    ))}
-                  </Radio.Group>
-                ) : currentQuestion?.type === "multiple_choice" ? (
-                  <div>
-                    {currentQuestion?.options.map((option) => (
-                      <div key={option.id} style={{ margin: "10px 0" }}>
-                        <Checkbox
-                          checked={
-                            selectedAnswers[
-                              currentQuestion.id
-                            ]?.optionIds?.includes(option.id) || false
-                          }
-                          onChange={(e) => {
-                            const currentSelected =
-                              selectedAnswers[currentQuestion.id]?.optionIds ||
-                              [];
-                            let newOptionIds;
+                      </Checkbox>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
-                            if (e.target.checked) {
-                              newOptionIds = [...currentSelected, option.id];
-                            } else {
-                              newOptionIds = currentSelected.filter(
-                                (id) => id !== option.id
-                              );
-                            }
+            <Space>
+              <Button
+                type="primary"
+                onClick={handlePrevious}
+                disabled={currentQuestionIndex === 0 || submitting}
+              >
+                Previous
+              </Button>
+              <Button
+                type="primary"
+                onClick={
+                  currentQuestionIndex === questions.length - 1
+                    ? handleNext
+                    : handleNext
+                }
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Spin size="small" />
+                ) : currentQuestionIndex === questions.length - 1 ? (
+                  "Submit"
+                ) : (
+                  "Next"
+                )}
+              </Button>
+            </Space>
+          </Card>
+        </Col>
 
-                            setSelectedAnswers({
-                              ...selectedAnswers,
-                              [currentQuestion.id]: {
-                                ...selectedAnswers[currentQuestion.id],
-                                optionIds: newOptionIds,
-                                optionId: null,
-                                text: null,
-                              },
-                            });
-                          }}
-                        >
-                          {option.option_text}
-                          {option.option_image && (
-                            <img
-                              src={option.option_image}
-                              alt="Option visual"
-                              style={{
-                                maxWidth: "100%",
-                                maxHeight: "100px",
-                                marginLeft: "10px",
-                              }}
-                            />
-                          )}
-                        </Checkbox>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
+        <Col xs={24} lg={6}>
+          <Card title="Answer Status" bordered>
+            <Space direction="vertical" size="small">
               <Space>
-                <Button
-                  type="primary"
-                  onClick={handlePrevious}
-                  disabled={currentQuestionIndex === 0 || submitting}
-                >
-                  Previous
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={
-                    currentQuestionIndex === questions.length - 1
-                      ? handleNext
-                      : handleNext
-                  }
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Spin size="small" />
-                  ) : currentQuestionIndex === questions.length - 1 ? (
-                    "Submit"
-                  ) : (
-                    "Next"
-                  )}
-                </Button>
+                <div style={{ background: "#52c41a", width: 20, height: 20 }} />{" "}
+                <Text>Attempted</Text>
               </Space>
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={6}>
-            <Card title="Answer Status" bordered>
-              <Space direction="vertical" size="small">
-                <Space>
-                  <div
-                    style={{ background: "#52c41a", width: 20, height: 20 }}
-                  />{" "}
-                  <Text>Attempted</Text>
-                </Space>
-                <Space>
-                  <div
-                    style={{ background: "#1890ff", width: 20, height: 20 }}
-                  />{" "}
-                  <Text>Seen but Not Answered</Text>
-                </Space>
-                <Space>
-                  <div
-                    style={{ background: "#faad14", width: 20, height: 20 }}
-                  />{" "}
-                  <Text>Not Seen</Text>
-                </Space>
+              <Space>
+                <div style={{ background: "#1890ff", width: 20, height: 20 }} />{" "}
+                <Text>Seen but Not Answered</Text>
               </Space>
+              <Space>
+                <div style={{ background: "#faad14", width: 20, height: 20 }} />{" "}
+                <Text>Not Seen</Text>
+              </Space>
+            </Space>
 
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              {questions.map((q, index) => {
+                const answered =
+                  (selectedAnswers[q.id]?.optionIds?.length || 0) > 0 ||
+                  selectedAnswers[q.id]?.optionId !== null ||
+                  selectedAnswers[q.id]?.text !== null;
+                const seen = seenQuestions.includes(q.id);
+
+                let bgColor = "#faad14"; // Gold - not seen
+                let textColor = "#000";
+
+                if (answered) {
+                  bgColor = "#52c41a"; // Green - answered
+                  textColor = "#fff";
+                } else if (seen) {
+                  bgColor = "#1890ff"; // Blue - seen but not answered
+                  textColor = "#fff";
+                }
+
+                return (
+                  <Button
+                    key={q.id}
+                    type="default"
+                    style={{
+                      backgroundColor: bgColor,
+                      color: textColor,
+                    }}
+                    onClick={() => handleQuestionNavigation(index)}
+                  >
+                    {index + 1}
+                  </Button>
+                );
+              })}
+            </div>
+          </Card>
+          <Card title="Marks Information" bordered style={{ marginTop: 20 }}>
+            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(5, 1fr)",
-                  gap: 10,
-                  marginTop: 20,
+                  border: "2px solid #52c41a", // Green border
+                  borderRadius: "4px",
+                  padding: "8px 16px",
+                  backgroundColor: "#f6ffed", // Light green background
+                  textAlign: "center",
+                  width: "100%",
                 }}
               >
-                {questions.map((q, index) => {
-                  const answered =
-                    (selectedAnswers[q.id]?.optionIds?.length || 0) > 0 ||
-                    selectedAnswers[q.id]?.optionId !== null ||
-                    selectedAnswers[q.id]?.text !== null;
-                  const seen = seenQuestions.includes(q.id);
-
-                  let bgColor = "#faad14"; // Gold - not seen
-                  let textColor = "#000";
-
-                  if (answered) {
-                    bgColor = "#52c41a"; // Green - answered
-                    textColor = "#fff";
-                  } else if (seen) {
-                    bgColor = "#1890ff"; // Blue - seen but not answered
-                    textColor = "#fff";
-                  }
-
-                  return (
-                    <Button
-                      key={q.id}
-                      type="default"
-                      style={{
-                        backgroundColor: bgColor,
-                        color: textColor,
-                      }}
-                      onClick={() => handleQuestionNavigation(index)}
-                    >
-                      {index + 1}
-                    </Button>
-                  );
-                })}
+                <Text strong style={{ color: "#52c41a" }}>
+                  Total Marks:
+                </Text>{" "}
+                <Text strong style={{ fontSize: "16px" }}>
+                  {currentQuestion?.total_marks}
+                </Text>
               </div>
-            </Card>
-            <Card title="Marks Information" bordered style={{ marginTop: 20 }}>
-              <Space
-                direction="vertical"
-                size="middle"
-                style={{ width: "100%" }}
+              <div
+                style={{
+                  border: "2px solid #ff4d4f", // Red border
+                  borderRadius: "4px",
+                  padding: "8px 16px",
+                  backgroundColor: "#fff2f0", // Light red background
+                  textAlign: "center",
+                  width: "100%",
+                }}
               >
-                <div
-                  style={{
-                    border: "2px solid #52c41a", // Green border
-                    borderRadius: "4px",
-                    padding: "8px 16px",
-                    backgroundColor: "#f6ffed", // Light green background
-                    textAlign: "center",
-                    width: "100%",
-                  }}
-                >
-                  <Text strong style={{ color: "#52c41a" }}>
-                    Total Marks:
-                  </Text>{" "}
-                  <Text strong style={{ fontSize: "16px" }}>
-                    {currentQuestion?.total_marks}
-                  </Text>
-                </div>
-                <div
-                  style={{
-                    border: "2px solid #ff4d4f", // Red border
-                    borderRadius: "4px",
-                    padding: "8px 16px",
-                    backgroundColor: "#fff2f0", // Light red background
-                    textAlign: "center",
-                    width: "100%",
-                  }}
-                >
-                  <Text strong style={{ color: "#ff4d4f" }}>
-                    Negative Marks:
-                  </Text>{" "}
-                  <Text strong style={{ fontSize: "16px" }}>
-                    {currentQuestion?.negative_marks}
-                  </Text>
-                </div>
-              </Space>
-            </Card>
-          </Col>
-        </Row>
+                <Text strong style={{ color: "#ff4d4f" }}>
+                  Negative Marks:
+                </Text>{" "}
+                <Text strong style={{ fontSize: "16px" }}>
+                  {currentQuestion?.negative_marks}
+                </Text>
+              </div>
+            </Space>
+          </Card>
+        </Col>
+      </Row>
 
-        {/* <Modal
+      {/* <Modal
           title="Test Result"
           open={isModalVisible}
           onOk={handleModalOk}
@@ -773,84 +757,83 @@ const submitFinalResult = async () => {
             />
           )}
         </Modal> */}
-        <Modal
-          title="Test Completed"
-          open={isFinalModalVisible}
-          onOk={() => {
-            setIsFinalModalVisible(false);
-            navigate("/student/CompletedTest");
-          }}
-          footer={[
-            <Button
-              key="submit"
-              type="primary"
-              onClick={() => {
-                setIsFinalModalVisible(false);
-                navigate("/student/CompletedTest");
-              }}
-            >
-              OK
-            </Button>,
-          ]}
-          width={700}
-        >
-          {finalResult && (
-            <Table
-              dataSource={[
-                {
-                  key: "1",
-                  label: "Total Questions",
-                  value: finalResult.total_questions,
-                },
-                { key: "2", label: "Attempted", value: finalResult.attempted },
-                {
-                  key: "3",
-                  label: "Unattempted",
-                  value: finalResult.unattempted,
-                },
-                {
-                  key: "4",
-                  label: "Correct Answers",
-                  value: finalResult.correct,
-                },
-                { key: "5", label: "Wrong Answers", value: finalResult.wrong },
-                {
-                  key: "6",
-                  label: "Final Score",
-                  value: `${finalResult.final_score}%`,
-                },
-                {
-                  key: "7",
-                  label: "Final Result",
-                  value: finalResult.final_result,
-                },
-                {
-                  key: "8",
-                  label: "Marks Awarded",
-                  value: finalResult.marks_awarded,
-                },
-                {
-                  key: "9",
-                  label: "Marks Deducted",
-                  value: finalResult.marks_deducted,
-                },
-                {
-                  key: "10",
-                  label: "Total Marks Awarded",
-                  value: finalResult.total_marks_awarded,
-                },
-              ]}
-              columns={[
-                { title: "Details", dataIndex: "label", key: "label" },
-                { title: "Result", dataIndex: "value", key: "value" },
-              ]}
-              pagination={false}
-              bordered
-            />
-          )}
-        </Modal>
-      </div>
-    </StudentLayoutWrapper>
+      <Modal
+        title="Test Completed"
+        open={isFinalModalVisible}
+        onOk={() => {
+          setIsFinalModalVisible(false);
+          navigate("/student/CompletedTest");
+        }}
+        footer={[
+          <Button
+            key="submit"
+            type="primary"
+            onClick={() => {
+              setIsFinalModalVisible(false);
+              navigate("/student/CompletedTest");
+            }}
+          >
+            OK
+          </Button>,
+        ]}
+        width={700}
+      >
+        {finalResult && (
+          <Table
+            dataSource={[
+              {
+                key: "1",
+                label: "Total Questions",
+                value: finalResult.total_questions,
+              },
+              { key: "2", label: "Attempted", value: finalResult.attempted },
+              {
+                key: "3",
+                label: "Unattempted",
+                value: finalResult.unattempted,
+              },
+              {
+                key: "4",
+                label: "Correct Answers",
+                value: finalResult.correct,
+              },
+              { key: "5", label: "Wrong Answers", value: finalResult.wrong },
+              {
+                key: "6",
+                label: "Final Score",
+                value: `${finalResult.final_score}%`,
+              },
+              {
+                key: "7",
+                label: "Final Result",
+                value: finalResult.final_result,
+              },
+              {
+                key: "8",
+                label: "Marks Awarded",
+                value: finalResult.marks_awarded,
+              },
+              {
+                key: "9",
+                label: "Marks Deducted",
+                value: finalResult.marks_deducted,
+              },
+              {
+                key: "10",
+                label: "Total Marks Awarded",
+                value: finalResult.total_marks_awarded,
+              },
+            ]}
+            columns={[
+              { title: "Details", dataIndex: "label", key: "label" },
+              { title: "Result", dataIndex: "value", key: "value" },
+            ]}
+            pagination={false}
+            bordered
+          />
+        )}
+      </Modal>
+    </div>
   );
 };
 

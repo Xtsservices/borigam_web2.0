@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Key, useEffect, useState } from "react";
 import {
   Table,
   Button,
@@ -22,7 +22,6 @@ import { useNavigate } from "react-router-dom";
 import Title from "antd/es/typography/Title";
 
 const { Text } = Typography;
-const { Search } = Input;
 const { Option } = Select;
 
 interface StudentData {
@@ -71,6 +70,8 @@ interface Test {
 }
 
 interface Course {
+  name: any;
+  id: Key | null | undefined;
   course_id: number;
   course_name: string;
 }
@@ -145,7 +146,8 @@ const StudentDashboard: React.FC = () => {
       );
       if (!response.ok)
         throw new Error(`HTTP error! Status: ${response.status}`);
-      const data: Course[] = await response.json();
+      const data = await response.json();
+      console.log("Fetched courses:", data[0].name);
       setCourses(data);
     } catch (error) {
       console.error("Error fetching courses:", error);
@@ -251,12 +253,12 @@ const StudentDashboard: React.FC = () => {
     const matchesSearch = test.test_name
       .toLowerCase()
       .includes(searchText.toLowerCase());
-    
+
     // Filter by course
     const matchesCourse = selectedCourse
       ? test.course_id === selectedCourse
       : true;
-    
+
     return matchesSearch && matchesCourse;
   });
 
@@ -361,28 +363,68 @@ const StudentDashboard: React.FC = () => {
           footer={null}
           width={800}
         >
-          <div style={{ marginBottom: 16 }}>
-            <Row gutter={16}>
+          <div style={{ marginBottom: 20 }}>
+            <Row gutter={24}>
               <Col span={12}>
-                <Search
-                  placeholder="Search tests"
+                <Input
+                  placeholder="🔍 Search tests by name"
                   allowClear
+                  value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  style={{ width: "100%" }}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    height: 40,
+                    background: "#fafafa",
+                    border: "1px solid #d9d9d9",
+                    paddingLeft: 14,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  prefix={
+                    <span
+                      style={{
+                        color: "#bfbfbf",
+                        marginRight: 8,
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <i className="anticon anticon-search" />
+                    </span>
+                  }
                 />
               </Col>
               <Col span={12}>
                 <Select
-                  style={{ width: "100%" }}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    fontSize: 16,
+                    height: 40,
+                    background: "#fafafa",
+                    border: "1px solid #d9d9d9",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
                   placeholder="Filter by course"
                   allowClear
+                  value={selectedCourse}
                   onChange={(value) => setSelectedCourse(value)}
+                  dropdownStyle={{ fontSize: 16 }}
                 >
-                  {courses.map((course) => (
-                    <Option key={course.course_id} value={course.course_id}>
-                      {course.course_name}
-                    </Option>
-                  ))}
+                  {courses.map(
+                    (course) => (
+                      console.log("Course:", course.name),
+                      (
+                        <Option key={course.id} value={course.id}>
+                          {course.name}
+                        </Option>
+                      )
+                    )
+                  )}
                 </Select>
               </Col>
             </Row>
@@ -410,7 +452,9 @@ const StudentDashboard: React.FC = () => {
                         <Button
                           type="primary"
                           loading={startingTest}
-                          onClick={() => handleStartTest(test.test_id, test.duration)}
+                          onClick={() =>
+                            handleStartTest(test.test_id, test.duration)
+                          }
                           disabled={!isTestActive(test)}
                         >
                           Start Test
