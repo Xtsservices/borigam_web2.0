@@ -34,7 +34,7 @@ const CompletedTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests",
+        "http://localhost:3001/api/student/getAllTestResultsForAllTests",
         {
           method: "GET",
           headers: {

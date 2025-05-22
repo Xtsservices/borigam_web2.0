@@ -84,7 +84,7 @@ const StudentDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await fetch(
-        "http://13.233.33.133:3001/api/studentdashbaord/getStudentTestStatus",
+        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
         {
           method: "GET",
           headers: {
@@ -123,7 +123,7 @@ const StudentDashboard: React.FC = () => {
     try {
       setStartingTest(true);
       const response = await fetch(
-        `http://13.233.33.133:3001/api/testsubmission/startTest`,
+        `http://localhost:3001/api/testsubmission/startTest`,
         {
           method: "POST",
           headers: {

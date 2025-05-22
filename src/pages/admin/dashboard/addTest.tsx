@@ -82,7 +82,7 @@ const AddTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://13.233.33.133:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
+        `http://localhost:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -107,7 +107,7 @@ const AddTest = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/getCourses",
+        "http://localhost:3001/api/course/getCourses",
         {
           headers: {
             "Content-Type": "application/json",
@@ -128,7 +128,7 @@ const AddTest = () => {
   const fetchBatches = async () => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/viewAllBatches",
+        "http://localhost:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -200,7 +200,7 @@ const AddTest = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/question/createTest",
+        "http://localhost:3001/api/question/createTest",
         {
           method: "POST",
           headers: {
@@ -224,7 +224,7 @@ const AddTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://13.233.33.133:3001/api/question/deleteQuestion?id=${questionId}`,
+        `http://localhost:3001/api/question/deleteQuestion?id=${questionId}`,
         {
           method: "GET",
           headers: {
@@ -261,15 +261,28 @@ const AddTest = () => {
         <h2 className="text-2xl font-bold mb-4">Add Test</h2>
 
         <Form layout="vertical">
-          <Form.Item label="Select Test Type:" required>
+            <Form.Item label="Enter Test Name:" required>
+            <input
+              type="text"
+              className="ant-input"
+              placeholder="Enter Test Name"
+              style={{ width: "100%", marginBottom: "20px" }}
+              value={testType}
+              onChange={(e) => setTestType(e.target.value)}
+            />
+            </Form.Item>
+          <Form.Item label="Select Test Timings:" required>
             <Select
               placeholder="Select Test Type"
               onChange={setTestType}
               value={testType}
               style={{ width: "100%", marginBottom: "20px" }}
             >
-              <Option value="Mock Test">Mock Test (180 mins)</Option>
-              <Option value="Regular Test">Regular Test (30 mins)</Option>
+              <Option value="Regular Test">30 mins</Option>
+              <Option value="Regular Test">45 mins</Option>
+              <Option value="Regular Test">60 mins</Option>
+              <Option value="Regular Test">120 mins</Option>
+              <Option value="Mock Test">180 mins</Option>
             </Select>
           </Form.Item>
 

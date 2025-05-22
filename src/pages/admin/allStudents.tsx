@@ -51,7 +51,7 @@ const AllStudents: React.FC = () => {
 
   const fetchStudents = () => {
     setLoading(true);
-    fetch("http://13.233.33.133:3001/api/student/getAllStudents", {
+    fetch("http://localhost:3001/api/student/getAllStudents", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -101,7 +101,7 @@ const AllStudents: React.FC = () => {
       setLoading(true);
 
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/updateStudent",
+        "http://localhost:3001/api/student/updateStudent",
         {
           method: "POST",
           headers: {
@@ -143,7 +143,7 @@ const AllStudents: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/deleteStudent",
+        "http://localhost:3001/api/student/deleteStudent",
         {
           method: "POST",
           headers: {

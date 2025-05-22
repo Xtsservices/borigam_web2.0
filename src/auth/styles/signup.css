@@ -5,8 +5,7 @@
 }
 
 .leftpanel {
-  width: 70%;
-  background-color: #0e0e0e; /* or use image here */
+  width: 70%;/* or use image here */
   display: flex;
   align-items: center;
   justify-content: center;

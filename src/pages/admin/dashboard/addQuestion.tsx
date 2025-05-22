@@ -53,7 +53,7 @@ const AddQuestions = () => {
     const fetchData = async () => {
       try {
         const coursesResponse = await fetch(
-          "http://13.233.33.133:3001/api/course/getCourses",
+          "http://localhost:3001/api/course/getCourses",
           {
             headers: {
               "Content-Type": "application/json",
@@ -169,7 +169,7 @@ const AddQuestions = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/question/createQuestion",
+        "http://localhost:3001/api/question/createQuestion",
         {
           method: "POST",
           headers: {
@@ -187,17 +187,19 @@ const AddQuestions = () => {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
+    // setIsModalVisible(false);
+    // window.location.reload();
   };
 
-  const handleModalOk = () => {
-    setIsModalVisible(false);
-    window.location.reload();
-  };
+  // const handleModalOk = () => {
+  //   setIsModalVisible(false);
+  //   window.location.reload();
+  // };
 
   return (
     <LayoutWrapper pageTitle="BORIGAM / Add Question">
       <Card className="w-1/2 mx-auto p-6">
-        <Form layout="vertical" onFinish={handleSubmit}>
+        <Form layout="vertical">
           <Form.Item
             label="Select Course:"
             name="course"
@@ -268,17 +270,19 @@ const AddQuestions = () => {
 
           <Form.Item label="Total Marks" required>
             <InputNumber
-              min={1}
+              min={0.01}
+              step={0.01}
               value={totalMarks}
-              onChange={(value) => setTotalMarks(value || 1)}
+              onChange={(value) => setTotalMarks(Number(value) || 1)}
             />
           </Form.Item>
 
           <Form.Item label="Negative Marks">
             <InputNumber
               min={0}
+              step={0.01}
               value={negativeMarks}
-              onChange={(value) => setNegativeMarks(value || 0)}
+              onChange={(value) => setNegativeMarks(Number(value) || 0)}
             />
           </Form.Item>
 
@@ -297,7 +301,7 @@ const AddQuestions = () => {
                   </Form.Item>
                   <Form.Item>
                     <input
-                      type={questionType === "radio" ? "radio" : "checkbox"} // This line is key
+                      type={questionType === "radio" ? "radio" : "checkbox"}
                       checked={option.is_correct}
                       onChange={(e) =>
                         handleCorrectOptionChange(index, e.target.checked)
@@ -307,7 +311,7 @@ const AddQuestions = () => {
                         questionType === "radio"
                           ? "correctOption"
                           : `correctOption${index}`
-                      } // Group radios, separate checkboxes
+                      }
                     />
                     Mark as Correct Answer
                   </Form.Item>
@@ -348,20 +352,24 @@ const AddQuestions = () => {
             </Form.Item>
           )}
 
-          <Button type="primary" htmlType="submit" className="mt-4">
+          <Button
+            type="primary"
+            className="mt-4"
+            onClick={() => setIsModalVisible(true)}
+          >
             Submit
           </Button>
         </Form>
       </Card>
 
       <Modal
-        title="Success"
+        title="Confirm Submission"
         open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={handleModalOk}
-        okText="OK"
+        onOk={handleSubmit}
+        onCancel={() => setIsModalVisible(false)}
+        okText="Submit"
       >
-        <p>Question added successfully!</p>
+        <p>Are you sure you want to submit this question?</p>
         {selectedCourse && (
           <Text type="secondary">Course: {selectedCourse}</Text>
         )}

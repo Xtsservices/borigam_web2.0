@@ -6,7 +6,6 @@
 
 .leftpanel {
   flex: 1;
-  background-color: black;
   color: gold;
   display: flex;
   align-items: center;
