@@ -137,7 +137,7 @@ const TestScreen: React.FC = () => {
         }
 
         const submissionsResponse = await axios.get(
-          `http://localhost:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
+          `http://13.233.33.133:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
           axiosConfig
         );
 
@@ -153,7 +153,7 @@ const TestScreen: React.FC = () => {
         }
         for (const submission of submissions) {
           const questionResponse = await axios.get(
-            `http://localhost:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
+            `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
             axiosConfig
           );
           questionsData.push(questionResponse.data.question);
@@ -216,7 +216,7 @@ const submitFinalResult = async () => {
     }
     
     const response = await axios.get(
-      `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+      `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
       axiosConfig
     );
     setFinalResult(response.data.result);
@@ -280,7 +280,7 @@ const submitFinalResult = async () => {
       };
 
       const response = await axios.post(
-        "http://localhost:3001/api/testsubmission/submitTest",
+        "http://13.233.33.133:3001/api/testsubmission/submitTest",
         payload,
         axiosConfig
       );
@@ -289,7 +289,7 @@ const submitFinalResult = async () => {
       if (response.data.pendingsubmission?.unanswered === 1) {
         // Submit final result using GET
         const finalResponse = await axios.get(
-          `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+          `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
           axiosConfig
         );
         setFinalResult(finalResponse.data.result);
@@ -333,7 +333,7 @@ const submitFinalResult = async () => {
         try {
           setSubmitting(true);
           const response = await axios.get(
-            `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+            `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
             axiosConfig
           );
           setFinalResult(response.data.result);

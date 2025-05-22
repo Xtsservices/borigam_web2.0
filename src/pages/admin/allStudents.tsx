@@ -51,7 +51,7 @@ const AllStudents: React.FC = () => {
 
   const fetchStudents = () => {
     setLoading(true);
-    fetch("http://localhost:3001/api/student/getAllStudents", {
+    fetch("http://13.233.33.133:3001/api/student/getAllStudents", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -101,7 +101,7 @@ const AllStudents: React.FC = () => {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:3001/api/student/updateStudent",
+        "http://13.233.33.133:3001/api/student/updateStudent",
         {
           method: "POST",
           headers: {
@@ -139,11 +139,13 @@ const AllStudents: React.FC = () => {
     }
   };
 
+  console.log("students", students);
+
   const handleDelete = async (studentId: number) => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/student/deleteStudent",
+        "http://13.233.33.133:3001/api/student/deleteStudent",
         {
           method: "POST",
           headers: {
@@ -298,7 +300,7 @@ const AllStudents: React.FC = () => {
         <Modal
           title="Edit Student Details"
           visible={isModalVisible}
-          onOk={handleUpdate}
+          onOk={handleUpdate}  
           onCancel={handleCancel}
           footer={[
             <Button key="back" onClick={handleCancel}>
@@ -329,6 +331,25 @@ const AllStudents: React.FC = () => {
             >
               <Input />
             </Form.Item>
+
+
+
+            <Form.Item
+              name="Batch Name"
+              label="Batch Name"
+              rules={[{ required: true, message: "Please input last name!" }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="Course Name"
+              label="Course Name"
+              rules={[{ required: true, message: "Please input last name!" }]}
+            >
+              <Input />
+            </Form.Item>
+
+
             <Form.Item
               name="email"
               label="Email"

@@ -68,7 +68,7 @@ const StudentDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           headers: { "Content-Type": "application/json", token: token || "" },
         }
@@ -84,7 +84,7 @@ const StudentDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/viewAllBatches",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
           headers: { "Content-Type": "application/json", token: token || "" },
         }
@@ -100,8 +100,8 @@ const StudentDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const url = collegeId
-        ? `http://localhost:3001/api/student/getAllStudents?collegeId=${collegeId}`
-        : "http://localhost:3001/api/student/getAllStudents";
+        ? `http://13.233.33.133:3001/api/student/getAllStudents?collegeId=${collegeId}`
+        : "http://13.233.33.133:3001/api/student/getAllStudents";
 
       const response = await fetch(url, {
         headers: { "Content-Type": "application/json", token: token || "" },
@@ -132,7 +132,7 @@ const StudentDashboard = () => {
   const handleAssignStudent = async (values: any) => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/student/assignStudentToCourse",
+        "http://13.233.33.133:3001/api/student/assignStudentToCourse",
         {
           method: "POST",
           headers: {

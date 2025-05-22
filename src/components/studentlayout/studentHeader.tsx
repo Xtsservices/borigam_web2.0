@@ -57,7 +57,7 @@ const StudentAppHeader = ({
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://localhost:3001/api/users/myprofile",
+          "http://13.233.33.133:3001/api/users/myprofile",
           {
             headers: { token: token || "" },
           }
@@ -94,7 +94,7 @@ const StudentAppHeader = ({
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        "http://localhost:3001/api/users/changePassword",
+        "http://13.233.33.133:3001/api/users/changePassword",
         {
           currentPassword: values.currentPassword,
           newPassword: values.newPassword,

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Table, Spin } from "antd";
-// import { useNavigate } from "react-router-dom";
+import { Table, Spin, Input, Select, Row, Col, Button } from "antd";
 import LayoutWrapper from "../../components/adminlayout/layoutWrapper";
+
+const { Search } = Input;
+const { Option } = Select;
 
 interface TestResult {
   user_id: number;
@@ -9,6 +11,10 @@ interface TestResult {
   lastname: string;
   test_id: number;
   test_name: string;
+  course_id: number;
+  course_name: string;
+  batch_id: number;
+  batch_name: string;
   total_questions: number;
   attempted: number;
   unattempted: number;
@@ -20,21 +26,51 @@ interface TestResult {
   marks_deducted: string;
 }
 
+interface FilterOption {
+  id: number;
+  name: string;
+}
+
+interface FilterOptions {
+  courses: FilterOption[];
+  batches: FilterOption[];
+}
+
 const CompletedTest = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [filterLoading, setFilterLoading] = useState<boolean>(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
-  // const navigate = useNavigate();
+  const [filteredResults, setFilteredResults] = useState<TestResult[]>([]);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    courses: [],
+    batches: [],
+  });
+  const [filters, setFilters] = useState({
+    search: "",
+    courseId: null as number | null,
+    batchId: null as number | null,
+  });
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchTestResults();
   }, []);
 
+  useEffect(() => {
+    if (testResults.length > 0) {
+      extractFilterOptions();
+    }
+  }, [testResults]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [filters, testResults]);
+
   const fetchTestResults = async () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/student/getAllTestResultsForAllTests",
+        "http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests",
         {
           method: "GET",
           headers: {
@@ -57,6 +93,81 @@ const CompletedTest = () => {
     }
   };
 
+  const extractFilterOptions = () => {
+    setFilterLoading(true);
+
+    // Extract unique courses with ids
+    const courseMap = new Map<number, string>();
+    testResults.forEach((item) => {
+      if (item.course_id && item.course_name) {
+        courseMap.set(item.course_id, item.course_name);
+      }
+    });
+    const courses = Array.from(courseMap, ([id, name]) => ({ id, name }));
+
+    // Extract unique batches with ids
+    const batchMap = new Map<number, string>();
+    testResults.forEach((item) => {
+      if (item.batch_id && item.batch_name) {
+        batchMap.set(item.batch_id, item.batch_name);
+      }
+    });
+    const batches = Array.from(batchMap, ([id, name]) => ({ id, name }));
+
+    setFilterOptions({
+      courses,
+      batches,
+    });
+    setFilterLoading(false);
+  };
+
+  const applyFilters = () => {
+    let results = [...testResults];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      results = results.filter(
+        (item) =>
+          item.firstname.toLowerCase().includes(searchTerm) ||
+          item.lastname.toLowerCase().includes(searchTerm) ||
+          item.test_name.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply course filter by ID
+    if (filters.courseId !== null) {
+      results = results.filter((item) => item.course_id === filters.courseId);
+    }
+
+    // Apply batch filter by ID
+    if (filters.batchId !== null) {
+      results = results.filter((item) => item.batch_id === filters.batchId);
+    }
+
+    setFilteredResults(results);
+  };
+
+  const handleSearch = (value: string) => {
+    setFilters({ ...filters, search: value });
+  };
+
+  const handleCourseChange = (value: number | null) => {
+    setFilters({ ...filters, courseId: value });
+  };
+
+  const handleBatchChange = (value: number | null) => {
+    setFilters({ ...filters, batchId: value });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: "",
+      courseId: null,
+      batchId: null,
+    });
+  };
+
   const columns = [
     {
       title: "Student Name",
@@ -67,6 +178,16 @@ const CompletedTest = () => {
       title: "Test Name",
       dataIndex: "test_name",
       key: "test_name",
+    },
+    {
+      title: "Course Name",
+      dataIndex: "course_name",
+      key: "course_name",
+    },
+    {
+      title: "Batch Name",
+      dataIndex: "batch_name",
+      key: "batch_name",
     },
     {
       title: "Total Questions",
@@ -116,23 +237,72 @@ const CompletedTest = () => {
         <span style={{ color: text === "Pass" ? "green" : "red" }}>{text}</span>
       ),
     },
-    // {
-    //   title: "Action",
-    //   key: "action",
-    //   render: (record: TestResult) => (
-    //     <Button
-    //       type="primary"
-    //       onClick={() => navigate(`/test-result/${record.test_id}`)}
-    //     >
-    //       View Details
-    //     </Button>
-    //   ),
-    // },
   ];
 
   return (
     <LayoutWrapper pageTitle={"BORIGAM / Completed Tests"}>
       <div className="completed-test" style={{ padding: "20px" }}>
+        <Row
+          gutter={[16, 16]}
+          style={{ marginBottom: "20px", paddingBottom: "20px" }}
+        >
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Search
+              placeholder="Search by name or test"
+              allowClear
+              enterButton
+              onSearch={handleSearch}
+              onChange={(e) => handleSearch(e.target.value)}
+              value={filters.search}
+            />
+          </Col>
+
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Select
+              style={{ width: "100%" }}
+              placeholder="Filter by course"
+              onChange={handleCourseChange}
+              value={filters.courseId}
+              loading={filterLoading}
+              allowClear
+              onClear={() => handleCourseChange(null)}
+            >
+              {filterOptions.courses.map((course) => (
+                <Option key={course.id} value={course.id}>
+                  {course.name}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Select
+              style={{ width: "100%" }}
+              placeholder="Filter by batch"
+              onChange={handleBatchChange}
+              value={filters.batchId}
+              loading={filterLoading}
+              allowClear
+              onClear={() => handleBatchChange(null)}
+            >
+              {filterOptions.batches.map((batch) => (
+                <Option key={batch.id} value={batch.id}>
+                  {batch.name}
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Button
+              onClick={clearFilters}
+              style={{ width: "100%" }}
+              type="default"
+              danger
+            >
+              Clear Filters
+            </Button>
+          </Col>
+        </Row>
+
         {loading ? (
           <Spin
             size="large"
@@ -144,7 +314,7 @@ const CompletedTest = () => {
           />
         ) : (
           <Table
-            dataSource={testResults}
+            dataSource={filteredResults}
             columns={columns}
             rowKey={(record) => `${record.user_id}-${record.test_id}`}
             bordered

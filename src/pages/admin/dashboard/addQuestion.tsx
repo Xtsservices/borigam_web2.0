@@ -12,7 +12,6 @@ import {
   Upload,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
 const { Option } = Select;
 const { Text } = Typography;
@@ -53,7 +52,7 @@ const AddQuestions = () => {
     const fetchData = async () => {
       try {
         const coursesResponse = await fetch(
-          "http://localhost:3001/api/course/getCourses",
+          "http://13.233.33.133:3001/api/course/getCourses",
           {
             headers: {
               "Content-Type": "application/json",
@@ -124,9 +123,26 @@ const AddQuestions = () => {
     return isImage;
   };
 
-  const handleSubmit = async () => {
+  const validateForm = () => {
     if (!questionText || !questionType || !selectedCourseId) {
       message.error("Please fill in all required fields.");
+      return false;
+    }
+
+    // Validation for radio and multiple_choice questions
+    if (questionType === "radio" || questionType === "multiple_choice") {
+      const hasCorrectOption = options.some((option) => option.is_correct);
+      if (!hasCorrectOption) {
+        message.warning("Mark at least one option as correct answer.");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       return;
     }
 
@@ -138,7 +154,7 @@ const AddQuestions = () => {
         ? "multiple_choice"
         : questionType.toLowerCase().replace(" ", "_")
     ); // Updated
-    formData.append("course_id", selectedCourseId.toString());
+    formData.append("course_id", (selectedCourseId ?? "").toString());
     formData.append("total_marks", totalMarks.toString());
     formData.append("negative_marks", negativeMarks.toString());
 
@@ -167,9 +183,11 @@ const AddQuestions = () => {
       formData.append("image", questionImageFile);
     }
 
+    console.log("Form Data:", formData);
+
     try {
       const response = await fetch(
-        "http://localhost:3001/api/question/createQuestion",
+        "http://13.233.33.133:3001/api/question/createQuestion",
         {
           method: "POST",
           headers: {
@@ -181,20 +199,36 @@ const AddQuestions = () => {
 
       if (!response.ok) throw new Error("Failed to submit question");
 
-      message.success("Question added successfully!");
-      setIsModalVisible(true);
+      message.success("Question submitted successfully!");
+      setIsModalVisible(false);
+      
+      // Reset form
+      setSelectedCourse("");
+      setSelectedCourseId(null);
+      setQuestionText("");
+      setQuestionType("");
+      setOptions([
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+      ]);
+      setQuestionImageFile(null);
+      setTotalMarks(1);
+      setNegativeMarks(0);
+      setTextAnswer("");
     } catch (error) {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
-    // setIsModalVisible(false);
-    // window.location.reload();
   };
 
-  // const handleModalOk = () => {
-  //   setIsModalVisible(false);
-  //   window.location.reload();
-  // };
+  const handlePreSubmit = () => {
+    if (!validateForm()) {
+      return;
+    }
+    setIsModalVisible(true);
+  };
 
   return (
     <LayoutWrapper pageTitle="BORIGAM / Add Question">
@@ -355,7 +389,7 @@ const AddQuestions = () => {
           <Button
             type="primary"
             className="mt-4"
-            onClick={() => setIsModalVisible(true)}
+            onClick={handlePreSubmit}
           >
             Submit
           </Button>

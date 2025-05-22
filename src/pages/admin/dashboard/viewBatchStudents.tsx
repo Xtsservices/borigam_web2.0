@@ -35,7 +35,7 @@ const BatchStudents = () => {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:3001/api/student/getAllStudents?batchId=${batchId}`,
+          `http://13.233.33.133:3001/api/student/getAllStudents?batchId=${batchId}`,
           {
             headers: {
               "Content-Type": "application/json",

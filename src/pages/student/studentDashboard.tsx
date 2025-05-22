@@ -14,12 +14,16 @@ import {
   List,
   message,
   Tooltip,
+  Input,
+  Select,
 } from "antd";
 import StudentLayoutWrapper from "../../components/studentlayout/studentlayoutWrapper";
 import { useNavigate } from "react-router-dom";
 import Title from "antd/es/typography/Title";
 
 const { Text } = Typography;
+const { Search } = Input;
+const { Option } = Select;
 
 interface StudentData {
   student_id: number;
@@ -66,6 +70,11 @@ interface Test {
   final_result: string | null;
 }
 
+interface Course {
+  course_id: number;
+  course_name: string;
+}
+
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [studentData, setStudentData] = useState<StudentData | null>(null);
@@ -73,18 +82,24 @@ const StudentDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showTestModal, setShowTestModal] = useState<boolean>(false);
   const [startingTest, setStartingTest] = useState<boolean>(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [searchText, setSearchText] = useState<string>("");
+  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchStudentData();
-  }, []);
+    if (showTestModal) {
+      fetchCourses();
+    }
+  }, [showTestModal]);
 
   const fetchStudentData = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await fetch(
-        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
+        "http://13.233.33.133:3001/api/studentdashbaord/getStudentTestStatus",
         {
           method: "GET",
           headers: {
@@ -111,6 +126,32 @@ const StudentDashboard: React.FC = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found, authentication required");
+      return;
+    }
+    try {
+      const response = await fetch(
+        "http://13.233.33.133:3001/api/course/getCourses",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            token: token,
+          },
+        }
+      );
+      if (!response.ok)
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      const data: Course[] = await response.json();
+      setCourses(data);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString();
   };
@@ -123,7 +164,7 @@ const StudentDashboard: React.FC = () => {
     try {
       setStartingTest(true);
       const response = await fetch(
-        `http://localhost:3001/api/testsubmission/startTest`,
+        `http://13.233.33.133:3001/api/testsubmission/startTest`,
         {
           method: "POST",
           headers: {
@@ -135,7 +176,6 @@ const StudentDashboard: React.FC = () => {
       );
       localStorage.setItem("testDuration", duration?.toString());
       navigate(`/student/TestScreen/${testId}`);
-      // const data = await response.json();
       if (!response.ok) {
         throw new Error("Failed to start test");
       }
@@ -199,6 +239,27 @@ const StudentDashboard: React.FC = () => {
 
   const dataSource = studentData ? [studentData] : [];
 
+  function isTestActive(test: Test) {
+    const currentTime = Date.now() / 1000; // Current time in seconds
+    const startTime = parseInt(test.start_date);
+    const endTime = parseInt(test.end_date);
+    return currentTime >= startTime && currentTime <= endTime;
+  }
+
+  const filteredTests = studentData?.tests?.openTests?.filter((test) => {
+    // Filter by search text
+    const matchesSearch = test.test_name
+      .toLowerCase()
+      .includes(searchText.toLowerCase());
+    
+    // Filter by course
+    const matchesCourse = selectedCourse
+      ? test.course_id === selectedCourse
+      : true;
+    
+    return matchesSearch && matchesCourse;
+  });
+
   if (loading) {
     return (
       <StudentLayoutWrapper pageTitle={"BORIGAM / Student"}>
@@ -220,13 +281,6 @@ const StudentDashboard: React.FC = () => {
         <Alert message="Error" description={error} type="error" showIcon />
       </StudentLayoutWrapper>
     );
-  }
-
-  function isTestActive(test: Test) {
-    const currentTime = Date.now() / 1000; // Current time in seconds
-    const startTime = parseInt(test.start_date);
-    const endTime = parseInt(test.end_date);
-    return currentTime >= startTime && currentTime <= endTime;
   }
 
   return (
@@ -299,18 +353,49 @@ const StudentDashboard: React.FC = () => {
         <Modal
           title="Available Tests"
           visible={showTestModal}
-          onCancel={() => setShowTestModal(false)}
+          onCancel={() => {
+            setShowTestModal(false);
+            setSearchText("");
+            setSelectedCourse(null);
+          }}
           footer={null}
           width={800}
         >
-          {studentData?.tests?.openTests?.length ? (
+          <div style={{ marginBottom: 16 }}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Search
+                  placeholder="Search tests"
+                  allowClear
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              </Col>
+              <Col span={12}>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder="Filter by course"
+                  allowClear
+                  onChange={(value) => setSelectedCourse(value)}
+                >
+                  {courses.map((course) => (
+                    <Option key={course.course_id} value={course.course_id}>
+                      {course.course_name}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
+            </Row>
+          </div>
+
+          {filteredTests?.length ? (
             <div>
               <Title level={4} style={{ marginBottom: 20 }}>
-                You have {studentData.tests.openTests.length} test(s) available
+                You have {filteredTests.length} test(s) available
               </Title>
               <List
                 itemLayout="horizontal"
-                dataSource={studentData.tests.openTests}
+                dataSource={filteredTests}
                 renderItem={(test: Test) => (
                   <List.Item
                     style={{ padding: "16px 0" }}
@@ -390,7 +475,7 @@ const StudentDashboard: React.FC = () => {
           ) : (
             <Alert
               message="No Tests Available"
-              description="There are currently no tests available for you to take."
+              description="There are currently no tests matching your criteria."
               type="info"
               showIcon
             />

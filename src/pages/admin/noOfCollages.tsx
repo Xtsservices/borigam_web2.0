@@ -30,7 +30,7 @@ const CollegeList: React.FC = () => {
   // Fetch college data from API
   useEffect(() => {
     setLoading(true); // Ensure loading is true while fetching
-    fetch("http://localhost:3001/api/college/viewAllCollegesAndUsers", {
+    fetch("http://13.233.33.133:3001/api/college/viewAllCollegesAndUsers", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

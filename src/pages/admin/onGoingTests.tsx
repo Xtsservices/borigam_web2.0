@@ -22,7 +22,7 @@ const OngoingTest = () => {
     const fetchTests = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3001/api/question/getCurrentAndUpcomingTests",
+          "http://13.233.33.133:3001/api/question/getCurrentAndUpcomingTests",
           {
             headers: {
               "Content-Type": "application/json",
