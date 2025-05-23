@@ -168,22 +168,28 @@ const AddQuestions = () => {
       }));
       formData.append("options", JSON.stringify(optionsData));
 
-      const imageOptions = options
+      const imageOptions: any = options
         .map((option) => option.image)
-        .filter((image) => image !== null);
+        .filter((image) => image instanceof File);
 
-      imageOptions.forEach((image, index) => {
-        if (image) {
-          formData.append(`imageOptions[${index}]`, image);
+        console.log("imageOptions", imageOptions);
+   
+        if (imageOptions.length > 0) {
+          imageOptions.forEach((image: File, index: number) => {
+            formData.append(`imageOption${index + 1}`, image as File);
+          });
         }
-      });
-    }
 
+    }
     if (questionImageFile) {
       formData.append("image", questionImageFile);
     }
 
+
+   
+
     console.log("Form Data:", formData);
+
 
     try {
       const response = await fetch(
