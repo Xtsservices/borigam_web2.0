@@ -285,10 +285,7 @@ const TestScreen: React.FC = () => {
       );
 
       // Check if all questions are answered
-      if (
-        response.data.pendingsubmission?.total_unanswered === 0 &&
-        response.data.pendingsubmission?.total_open === 0
-      ) {
+      if (response.data.pendingsubmission?.total_open === 0) {
         // Submit final result using GET
         const finalResponse = await axios.get(
           `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
