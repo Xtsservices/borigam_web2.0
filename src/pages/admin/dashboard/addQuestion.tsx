@@ -227,7 +227,7 @@ const AddQuestions = () => {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
-    //window.location.reload();
+    window.location.reload();
   };
 
   const handlePreSubmit = () => {
