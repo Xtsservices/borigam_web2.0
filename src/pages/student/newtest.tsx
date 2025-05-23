@@ -207,12 +207,16 @@ const TestScreen: React.FC = () => {
       setSubmitting(true);
       // Auto-save the current answer before submitting
       const currentQ = questions[currentQuestionIndex];
+
       if (currentQ) {
         const answer = selectedAnswers[currentQ.id];
+        console.log("Current answer:", answer);
         if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
           await saveAnswerToServer(currentQ.id, answer);
         }
+        console.log("Answer saved before final submission", saveAnswerToServer(currentQ.id, answer));
       }
+    
 
       const response = await axios.get(
         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
@@ -277,12 +281,15 @@ const TestScreen: React.FC = () => {
         test_id: parseInt(testId),
         answers: [answerPayload],
       };
-
+      console.log("Payload to save answer:", payload);
       const response = await axios.post(
         "http://13.233.33.133:3001/api/testsubmission/submitTest",
         payload,
         axiosConfig
       );
+      console.log("Response from server:", response.data);
+    
+      return
 
       // Check if all questions are answered
       if (response.data.pendingsubmission?.total_open === 0) {
@@ -303,18 +310,34 @@ const TestScreen: React.FC = () => {
     }
   };
 
+  // const handleSubmitButton =  async() => {
+  //   if (response.data.pendingsubmission?.total_open === 0) {
+  //       // Submit final result using GET
+  //       const finalResponse = await axios.get(
+  //         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+  //         axiosConfig
+  //       );
+  //       setFinalResult(finalResponse.data.result);
+  //       setIsFinalModalVisible(true);
+  //     }
+  // }
+
   const handleNext = async () => {
     const currentQ = questions[currentQuestionIndex];
+    console.log("Current Question ID:", currentQ.id);
     const answer = selectedAnswers[currentQ.id];
-
+    console.log("Selected Answer:", answer);
     // Submit answer if any option is selected or text is entered
     if (answer?.optionId || answer?.optionIds || answer?.text) {
       await saveAnswerToServer(currentQ.id, answer);
     }
+    console.log("Answer saved to server");
 
     if (!seenQuestions.includes(currentQ.id)) {
       setSeenQuestions([...seenQuestions, currentQ.id]);
     }
+
+    console.log("Seen Questions:", seenQuestions);
 
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -326,7 +349,31 @@ const TestScreen: React.FC = () => {
           !selectedAnswers[q.id]?.optionIds?.length &&
           !selectedAnswers[q.id]?.text
       ).length;
+      console.log("Unanswered Questions:", unanswered);
+      console.log("Total Questions:", questions.length);
 
+      // If we are at the last question (last index), submit the test
+      if (currentQuestionIndex === questions.length - 1) {
+        try {
+          setSubmitting(true);
+          const response = await axios.get(
+        `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+        axiosConfig
+          );
+          setFinalResult(response.data.result);
+          console.log("Final Result:", response.data.result);
+          setIsFinalModalVisible(true);
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.error("Failed to submit final result:", error);
+          message.error("Failed to submit final result");
+        } finally {
+          setSubmitting(false);
+        }
+        return; // Prevent further execution
+      }
+    
+      return 
       if (unanswered === 1) {
         // All questions answered - submit final result using GET
         try {
@@ -589,23 +636,24 @@ const TestScreen: React.FC = () => {
               >
                 Previous
               </Button>
-              <Button
-                type="primary"
-                onClick={
-                  currentQuestionIndex === questions.length - 1
-                    ? handleNext
-                    : handleNext
-                }
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <Spin size="small" />
-                ) : currentQuestionIndex === questions.length - 1 ? (
-                  "Submit"
-                ) : (
-                  "Next"
+                {currentQuestionIndex < questions.length - 1 && (
+                <Button
+                  type="primary"
+                  onClick={handleNext}
+                  disabled={submitting}
+                >
+                  {submitting ? <Spin size="small" /> : "Next"}
+                </Button>
                 )}
-              </Button>
+                {currentQuestionIndex === questions.length - 1 && (
+                <Button
+                  type="primary"
+                  onClick={handleNext}
+                  disabled={submitting}
+                >
+                  {submitting ? <Spin size="small" /> : "Submit"}
+                </Button>
+                )}
             </Space>
           </Card>
         </Col>
