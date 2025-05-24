@@ -74,7 +74,7 @@ const TestScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [test] = useState<Test | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isModalVisible] = useState(false);
   // const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [timerActive, setTimerActive] = useState(true);
   const [seenQuestions, setSeenQuestions] = useState<number[]>([]);
@@ -139,6 +139,8 @@ const TestScreen: React.FC = () => {
           `http://13.233.33.133:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
           axiosConfig
         );
+          
+        console.log("questions fetching from responsessss:", submissionsResponse.data);
 
         const submissions = submissionsResponse.data?.submissions || [];
         // Set a default duration if not available from API (e.g., 30 minutes)
@@ -150,12 +152,16 @@ const TestScreen: React.FC = () => {
         if (questionsData.length > 0) {
           setSeenQuestions([questionsData[0].id]);
         }
+
+        console.log("Setting questionssssssssss:", questionsData);
+
         for (const submission of submissions) {
           const questionResponse = await axios.get(
             `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
             axiosConfig
           );
           questionsData.push(questionResponse.data.question);
+          // console.log("questionsssss", questionResponse.data.question);
         }
 
         setQuestions(questionsData);
@@ -194,6 +200,8 @@ const TestScreen: React.FC = () => {
     loadTest();
   }, [testId]);
 
+
+  // ...................................................
   useEffect(() => {
     if (Object.keys(selectedAnswers).length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAnswers));
@@ -246,6 +254,7 @@ const TestScreen: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
+  // saveAnswerToServer function
   const saveAnswerToServer = async (
     questionId: number,
     answer: SelectedAnswer
@@ -310,17 +319,6 @@ const TestScreen: React.FC = () => {
     }
   };
 
-  // const handleSubmitButton =  async() => {
-  //   if (response.data.pendingsubmission?.total_open === 0) {
-  //       // Submit final result using GET
-  //       const finalResponse = await axios.get(
-  //         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
-  //         axiosConfig
-  //       );
-  //       setFinalResult(finalResponse.data.result);
-  //       setIsFinalModalVisible(true);
-  //     }
-  // }
 
   const handleNext = async () => {
     const currentQ = questions[currentQuestionIndex];
@@ -342,61 +340,45 @@ const TestScreen: React.FC = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Check if all questions are answered
-      const unanswered = questions.filter(
-        (q) =>
-          !selectedAnswers[q.id]?.optionId &&
-          !selectedAnswers[q.id]?.optionIds?.length &&
-          !selectedAnswers[q.id]?.text
+      // Calculate answered and unanswered
+      const answered = questions.filter(
+      (q) =>
+        (selectedAnswers[q.id]?.optionId !== null && selectedAnswers[q.id]?.optionId !== undefined) ||
+        ((selectedAnswers[q.id]?.optionIds ?? []).length > 0) ||
+        (selectedAnswers[q.id]?.text && (selectedAnswers[q.id]?.text ?? "").trim() !== "")
       ).length;
-      console.log("Unanswered Questions:", unanswered);
+      const unanswered = questions.length - answered;
+
+      console.log("Attempted (answered):", answered);
+      console.log("Unattempted (unanswered):", unanswered);
       console.log("Total Questions:", questions.length);
 
       // If we are at the last question (last index), submit the test
       if (currentQuestionIndex === questions.length - 1) {
-        try {
-          setSubmitting(true);
-          const response = await axios.get(
+      try {
+        setSubmitting(true);
+        const response = await axios.get(
         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
         axiosConfig
-          );
-          setFinalResult(response.data.result);
-          console.log("Final Result:", response.data.result);
-          setIsFinalModalVisible(true);
-          localStorage.removeItem(STORAGE_KEY);
-        } catch (error) {
-          console.error("Failed to submit final result:", error);
-          message.error("Failed to submit final result");
-        } finally {
-          setSubmitting(false);
-        }
-        return; // Prevent further execution
-      }
-    
-      return 
-      if (unanswered === 1) {
-        // All questions answered - submit final result using GET
-        try {
-          setSubmitting(true);
-          const response = await axios.get(
-            `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
-            axiosConfig
-          );
-          setFinalResult(response.data.result);
-          setIsFinalModalVisible(true);
-          localStorage.removeItem(STORAGE_KEY);
-        } catch (error) {
-          console.error("Failed to submit final result:", error);
-          message.error("Failed to submit final result");
-        } finally {
-          setSubmitting(false);
-        }
-      } else {
-        // Show regular completion modal
-        setIsModalVisible(true);
-        setTimerActive(false);
+        );
+        // Overwrite attempt/unattempted in finalResult for modal
+        setFinalResult({
+        ...response.data.result,
+        attempted: answered,
+        unattempted: unanswered,
+        });
+        setIsFinalModalVisible(true);
         localStorage.removeItem(STORAGE_KEY);
+      } catch (error) {
+        console.error("Failed to submit final result:", error);
+        message.error("Failed to submit final result");
+      } finally {
+        setSubmitting(false);
       }
+      return; // Prevent further execution
+      }
+
+      return;
     }
   };
 
