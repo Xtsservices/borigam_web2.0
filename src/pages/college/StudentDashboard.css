@@ -1,0 +1,120 @@
+/* Dashboard Header */
+.dashboard-header {
+  margin-bottom: 24px;
+}
+
+.dashboard-title {
+  margin-bottom: 8px !important;
+}
+
+/* Stats Cards */
+.stats-row {
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.stat-text {
+  flex: 1;
+}
+
+/* Tabs */
+.dashboard-tabs .ant-tabs-nav {
+  margin-bottom: 24px;
+}
+
+.dashboard-tabs .ant-tabs-tab {
+  padding: 12px 16px;
+}
+
+.dashboard-tabs .ant-tabs-tab-btn {
+  font-size: 15px;
+}
+
+/* Cards */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.add-button {
+  background: linear-gradient(45deg, #1890ff, #096dd9);
+  border: none;
+}
+
+/* Modal Headers */
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-header .anticon {
+  color: #1890ff;
+}
+
+/* Buttons */
+.primary-button {
+  background: linear-gradient(45deg, #1890ff, #096dd9);
+  border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-row .ant-col {
+    margin-bottom: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .add-button {
+    width: 100%;
+  }
+}
+
+/* Empty State */
+.ant-empty {
+  padding: 24px 0;
+}
+
+/* Table improvements */
+.ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #fafafa !important;
+  font-weight: 600;
+}
+
+/* Status tags */
+.ant-tag {
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-weight: 500;
+}

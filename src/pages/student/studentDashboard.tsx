@@ -7,22 +7,17 @@ import {
   Col,
   Spin,
   Alert,
-  Modal,
   Typography,
   Tag,
   Space,
-  List,
   message,
   Tooltip,
-  Input,
-  Select,
 } from "antd";
 import StudentLayoutWrapper from "../../components/studentlayout/studentlayoutWrapper";
 import { useNavigate } from "react-router-dom";
 import Title from "antd/es/typography/Title";
 
 const { Text } = Typography;
-const { Option } = Select;
 
 interface StudentData {
   student_id: number;
@@ -70,8 +65,8 @@ interface Test {
 }
 
 interface Course {
-  name: any;
-  id: Key | null | undefined;
+  name: string;
+  id: number;
   course_id: number;
   course_name: string;
 }
@@ -81,19 +76,18 @@ const StudentDashboard: React.FC = () => {
   const [studentData, setStudentData] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTestModal, setShowTestModal] = useState<boolean>(false);
   const [startingTest, setStartingTest] = useState<boolean>(false);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [searchText, setSearchText] = useState<string>("");
-  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseTests, setCourseTests] = useState<Test[]>([]);
+  const [loadingTests, setLoadingTests] = useState<boolean>(false);
+  const [loadingCourses, setLoadingCourses] = useState<boolean>(false);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     fetchStudentData();
-    if (showTestModal) {
-      fetchCourses();
-    }
-  }, [showTestModal]);
+    fetchCourses();
+  }, []);
 
   const fetchStudentData = async () => {
     try {
@@ -134,6 +128,7 @@ const StudentDashboard: React.FC = () => {
       return;
     }
     try {
+      setLoadingCourses(true);
       const response = await fetch(
         "http://13.233.33.133:3001/api/course/getCourses",
         {
@@ -147,11 +142,34 @@ const StudentDashboard: React.FC = () => {
       if (!response.ok)
         throw new Error(`HTTP error! Status: ${response.status}`);
       const data = await response.json();
-      console.log("Fetched courses:", data[0].name);
+      console.log("Fetched courses:", data);
       setCourses(data);
     } catch (error) {
       console.error("Error fetching courses:", error);
+    } finally {
+      setLoadingCourses(false);
     }
+  };
+
+  const fetchTestsByCourse = async (courseId: number) => {
+    setLoadingTests(true);
+    try {
+      // Filter tests from studentData based on course_id
+      const filteredTests = studentData?.tests?.openTests?.filter(
+        (test: Test) => test.course_id === courseId
+      ) || [];
+      setCourseTests(filteredTests);
+    } catch (error) {
+      console.error("Error filtering tests:", error);
+      setCourseTests([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
+
+  const handleCourseClick = async (course: Course) => {
+    setSelectedCourse(course);
+    await fetchTestsByCourse(course.id);
   };
 
   const formatDate = (timestamp: number) => {
@@ -177,7 +195,8 @@ const StudentDashboard: React.FC = () => {
         }
       );
       localStorage.setItem("testDuration", duration?.toString());
-      navigate(`/student/TestScreen/${testId}`);
+      localStorage.setItem("testId", testId.toString());
+      
       if (!response.ok) {
         throw new Error("Failed to start test");
       }
@@ -186,14 +205,13 @@ const StudentDashboard: React.FC = () => {
         throw new Error(data.message || "Failed to start test");
       }
       message.success("Test started successfully");
-      localStorage.setItem("testId", testId.toString());
+      navigate(`/student/TestScreen/${testId}`);
     } catch (err) {
       message.error(
         err instanceof Error ? err.message : "Failed to start test"
       );
     } finally {
       setStartingTest(false);
-      setShowTestModal(false);
     }
   };
 
@@ -203,7 +221,11 @@ const StudentDashboard: React.FC = () => {
       key: "name",
       render: () => `${studentData?.firstname} ${studentData?.lastname}`,
     },
-    { title: "Email", dataIndex: "email", key: "email" },
+    { 
+      title: "Email", 
+      key: "email",
+      render: () => studentData?.email || "N/A"
+    },
     {
       title: "Phone",
       key: "phone",
@@ -242,25 +264,11 @@ const StudentDashboard: React.FC = () => {
   const dataSource = studentData ? [studentData] : [];
 
   function isTestActive(test: Test) {
-    const currentTime = Date.now() / 1000; // Current time in seconds
+    const currentTime = Date.now() / 1000;
     const startTime = parseInt(test.start_date);
     const endTime = parseInt(test.end_date);
     return currentTime >= startTime && currentTime <= endTime;
   }
-
-  const filteredTests = studentData?.tests?.openTests?.filter((test) => {
-    // Filter by search text
-    const matchesSearch = test.test_name
-      .toLowerCase()
-      .includes(searchText.toLowerCase());
-
-    // Filter by course
-    const matchesCourse = selectedCourse
-      ? test.course_id === selectedCourse
-      : true;
-
-    return matchesSearch && matchesCourse;
-  });
 
   if (loading) {
     return (
@@ -301,230 +309,183 @@ const StudentDashboard: React.FC = () => {
           </h2>
         </Card>
 
-        <Row gutter={16}>
-          <Col span={16}>
-            <Card
-              title="Student Details"
-              bordered={false}
-              headStyle={{ backgroundColor: "#FFD700", fontWeight: "bold" }}
-            >
-              <Table
-                dataSource={dataSource}
-                columns={columns}
-                pagination={false}
-                style={{ overflowX: "auto" }}
-                rowKey="student_id"
-              />
-            </Card>
-          </Col>
-
-          <Col span={8}>
-            <Card
-              title="Student Tests"
-              bordered={false}
-              headStyle={{ backgroundColor: "#FFD700", fontWeight: "bold" }}
-            >
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Button
-                    type="primary"
-                    block
-                    style={{ marginBottom: "10px" }}
-                    onClick={() => navigate("/student/CompletedTest")}
-                  >
-                    Completed Tests
-                  </Button>
-                </Col>
-                <Col span={12}>
-                  <Button
-                    type="primary"
-                    block
-                    style={{ marginBottom: "10px" }}
-                    onClick={() => setShowTestModal(true)}
-                    disabled={!studentData?.tests?.openTests?.length}
-                  >
-                    New Test
-                  </Button>
-                </Col>
-              </Row>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Test Selection Modal */}
-        <Modal
-          title="Available Tests"
-          visible={showTestModal}
-          onCancel={() => {
-            setShowTestModal(false);
-            setSearchText("");
-            setSelectedCourse(null);
-          }}
-          footer={null}
-          width={800}
+        {/* Student Details */}
+        <Card
+          title="Student Details"
+          bordered={false}
+          headStyle={{ backgroundColor: "#FFD700", fontWeight: "bold" }}
+          style={{ marginBottom: "20px" }}
         >
-          <div style={{ marginBottom: 20 }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Input
-                  placeholder="🔍 Search tests by name"
-                  allowClear
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  style={{
-                    width: "100%",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    height: 40,
-                    background: "#fafafa",
-                    border: "1px solid #d9d9d9",
-                    paddingLeft: 14,
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  prefix={
-                    <span
-                      style={{
-                        color: "#bfbfbf",
-                        marginRight: 8,
-                        fontSize: 12,
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <i className="anticon anticon-search" />
-                    </span>
-                  }
-                />
-              </Col>
-              <Col span={12}>
-                <Select
-                  style={{
-                    width: "100%",
-                    borderRadius: 8,
-                    fontSize: 16,
-                    height: 40,
-                    background: "#fafafa",
-                    border: "1px solid #d9d9d9",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  placeholder="Filter by course"
-                  allowClear
-                  value={selectedCourse}
-                  onChange={(value) => setSelectedCourse(value)}
-                  dropdownStyle={{ fontSize: 16 }}
-                >
-                  {courses.map(
-                    (course) => (
-                      console.log("Course:", course.name),
-                      (
-                        <Option key={course.id} value={course.id}>
-                          {course.name}
-                        </Option>
-                      )
-                    )
-                  )}
-                </Select>
-              </Col>
-            </Row>
+          <Table
+            dataSource={dataSource}
+            columns={columns}
+            pagination={false}
+            style={{ overflowX: "auto" }}
+            rowKey="student_id"
+          />
+        </Card>
+
+        {/* On Going Tests Section */}
+        <Card
+          title="On Going Tests"
+          bordered={false}
+          headStyle={{ backgroundColor: "#FFD700", fontWeight: "bold" }}
+          style={{ marginBottom: "20px" }}
+        >
+          <div style={{ marginBottom: "20px" }}>
+            <Title level={4} style={{ marginBottom: "16px" }}>All Tests</Title>
+            {loadingCourses ? (
+              <Spin size="small" />
+            ) : (
+              <Space wrap>
+                {courses.map((course) => (
+                  <Button
+                    key={course.id}
+                    type={selectedCourse?.id === course.id ? "primary" : "default"}
+                    style={{
+                      backgroundColor: selectedCourse?.id === course.id ? "#FFD700" : "#FFD700",
+                      borderColor: "#FFD700",
+                      color: "#000",
+                      fontWeight: "bold",
+                      borderRadius: "4px",
+                      padding: "4px 16px",
+                    }}
+                    onClick={() => handleCourseClick(course)}
+                  >
+                    {course.name}
+                  </Button>
+                ))}
+              </Space>
+            )}
           </div>
 
-          {filteredTests?.length ? (
-            <div>
-              <Title level={4} style={{ marginBottom: 20 }}>
-                You have {filteredTests.length} test(s) available
-              </Title>
-              <List
-                itemLayout="horizontal"
-                dataSource={filteredTests}
-                renderItem={(test: Test) => (
-                  <List.Item
-                    style={{ padding: "16px 0" }}
-                    actions={[
-                      <Tooltip
-                        title={
-                          !isTestActive(test)
-                            ? "This test is no longer available"
-                            : ""
-                        }
-                      >
-                        <Button
-                          type="primary"
-                          loading={startingTest}
-                          onClick={() =>
-                            handleStartTest(test.test_id, test.duration)
+          {/* Display Tests for Selected Course */}
+          {selectedCourse && (
+            <div style={{ marginTop: "20px" }}>
+              {loadingTests ? (
+                <Spin
+                  size="large"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    margin: "40px 0",
+                  }}
+                />
+              ) : courseTests.length > 0 ? (
+                <div>
+                  {courseTests.map((test: Test) => (
+                    <div
+                      key={test.test_id}
+                      style={{
+                        marginBottom: "20px",
+                        padding: "16px",
+                        backgroundColor: "#f9f9f9",
+                        borderRadius: "8px",
+                      }}
+                    >
+                      <div style={{ marginBottom: "16px" }}>
+                        <Title level={4} style={{ margin: 0, marginBottom: "8px" }}>
+                          {test.test_name}
+                        </Title>
+                        <Text>Test ID: {test.test_id}</Text>
+                      </div>
+                      
+                      <Row gutter={[16, 8]} style={{ marginBottom: "16px" }}>
+                        <Col span={8}>
+                          <Text>Duration: {test.duration} minutes</Text>
+                        </Col>
+                        <Col span={8}>
+                          <Text>Questions: {test.total_questions || "N/A"}</Text>
+                        </Col>
+                        <Col span={8}>
+                          <Text>Course: {selectedCourse.name}</Text>
+                        </Col>
+                      </Row>
+                      
+                      <div style={{ marginBottom: "16px" }}>
+                        <Text>
+                          Available from: {formatDateTime(test.start_date)} to{" "}
+                          {formatDateTime(test.end_date)}
+                        </Text>
+                      </div>
+
+                      <div style={{ marginBottom: "16px" }}>
+                        {!isTestActive(test) && (
+                          <Tag color="red" style={{ marginRight: 8 }}>
+                            Expired
+                          </Tag>
+                        )}
+                        {test.final_result && (
+                          <Tag
+                            color={
+                              test.final_result === "Pass" ? "green" : "red"
+                            }
+                          >
+                            Previous Result: {test.final_result}
+                          </Tag>
+                        )}
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <Tooltip
+                          title={
+                            !isTestActive(test)
+                              ? "This test is no longer available"
+                              : ""
                           }
-                          disabled={!isTestActive(test)}
                         >
-                          Start Test
-                        </Button>
-                      </Tooltip>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={<Text strong>{test.test_name}</Text>}
-                      description={
-                        <Space direction="vertical" size={4}>
-                          <Row gutter={16}>
-                            <Col span={12}>
-                              <Text>Test ID: {test.test_id}</Text>
-                            </Col>
-                            <Col span={12}>
-                              <Text>
-                                Course: {test.course_name || "General"}
-                              </Text>
-                            </Col>
-                          </Row>
-                          <Row gutter={16}>
-                            <Col span={12}>
-                              <Text>Duration: {test.duration} minutes</Text>
-                            </Col>
-                            <Col span={12}>
-                              <Text>
-                                Questions: {test.total_questions || "N/A"}
-                              </Text>
-                            </Col>
-                          </Row>
-                          <Row gutter={16}>
-                            <Col span={24}>
-                              <Text>
-                                Available from:{" "}
-                                {formatDateTime(test.start_date)} to{" "}
-                                {formatDateTime(test.end_date)}
-                              </Text>
-                            </Col>
-                          </Row>
-                          {!isTestActive(test) && (
-                            <Tag color="red" style={{ marginTop: 8 }}>
-                              Expired
-                            </Tag>
-                          )}
-                          {test.final_result && (
-                            <Tag
-                              color={
-                                test.final_result === "Pass" ? "green" : "red"
-                              }
-                            >
-                              Previous Result: {test.final_result}
-                            </Tag>
-                          )}
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
+                          <Button
+                            type="primary"
+                            loading={startingTest}
+                            onClick={() =>
+                              handleStartTest(test.test_id, test.duration)
+                            }
+                            disabled={!isTestActive(test)}
+                            style={{
+                              backgroundColor: "#FFD700",
+                              borderColor: "#FFD700",
+                              color: "#000",
+                              fontWeight: "bold",
+                              fontSize: "14px",
+                              height: "40px",
+                              padding: "0 24px",
+                            }}
+                          >
+                            Start Test
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Alert
+                  message="No Tests Available"
+                  description={`There are currently no tests available for ${selectedCourse.name}.`}
+                  type="info"
+                  showIcon
+                />
+              )}
             </div>
-          ) : (
-            <Alert
-              message="No Tests Available"
-              description="There are currently no tests matching your criteria."
-              type="info"
-              showIcon
-            />
           )}
-        </Modal>
+        </Card>
+
+        {/* Completed Tests Button */}
+        <Card style={{ textAlign: "center" }}>
+          <Button
+            type="primary"
+            size="large"
+            onClick={() => navigate("/student/CompletedTest")}
+            style={{
+              backgroundColor: "#FFD700",
+              borderColor: "#FFD700",
+              color: "#000",
+              fontWeight: "bold",
+            }}
+          >
+            View Completed Tests
+          </Button>
+        </Card>
       </div>
     </StudentLayoutWrapper>
   );
