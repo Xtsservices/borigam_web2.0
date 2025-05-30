@@ -33,8 +33,8 @@ interface Question {
   name: string;
   type: string;
   image: string | null;
-  total_marks: number; // Add this
-  negative_marks: number; // Add this
+  total_marks: number;
+  negative_marks: number;
   options: Option[];
 }
 
@@ -49,19 +49,28 @@ interface Test {
   course_name: string | null;
 }
 
-// interface TestResult {
-//   totalQuestions: number;
-//   attempted: number;
-//   correct: number;
-//   wrong: number;
-//   finalScore: string;
-//   finalResult: string;
-//   message: string;
-// }
 interface SelectedAnswer {
-  optionIds?: number[]; // For multiple-choice questions
-  optionId?: number | null; // For single-select questions
+  optionIds?: number[];
+  optionId?: number | null;
   text?: string | null;
+}
+
+interface ApiQuestion {
+  question_id: number;
+  question_name: string;
+  options: Array<{
+    option_id: number;
+    option_text: string;
+  }>;
+  submitted_options: number[];
+  status: string;
+  start_time: string;
+}
+
+interface ApiResponse {
+  message: string;
+  start_time: string;
+  questions: ApiQuestion[];
 }
 
 const TestScreen: React.FC = () => {
@@ -75,13 +84,14 @@ const TestScreen: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [test] = useState<Test | null>(null);
   const [isModalVisible] = useState(false);
-  // const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [timerActive, setTimerActive] = useState(true);
   const [seenQuestions, setSeenQuestions] = useState<number[]>([]);
   const [testStarted, setTestStarted] = useState(false);
   const { testId } = useParams<{ testId: string }>();
   const [isFinalModalVisible, setIsFinalModalVisible] = useState(false);
   const [finalResult, setFinalResult] = useState<any>(null);
+  const [isSubmitConfirmVisible, setIsSubmitConfirmVisible] = useState(false);
+  const [answeredQuestions, setAnsweredQuestions] = useState<number[]>([]);
   const testDuration = localStorage.getItem("testDuration");
 
   const navigate = useNavigate();
@@ -90,6 +100,132 @@ const TestScreen: React.FC = () => {
 
   const STORAGE_KEY = `test_answers_${testId}`;
 
+  // Auto-save functionality
+  const autoSaveAnswers = async () => {
+    if (!testId || Object.keys(selectedAnswers).length === 0) return;
+
+    try {
+      // Save current answers to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAnswers));
+      
+      // Save to server
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ) {
+        const answer = selectedAnswers[currentQ.id];
+        if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
+          await saveAnswerToServer(currentQ.id, answer);
+        }
+      }
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    }
+  };
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const autoSaveInterval = setInterval(autoSaveAnswers, 30000);
+    return () => clearInterval(autoSaveInterval);
+  }, [selectedAnswers, currentQuestionIndex, questions]);
+
+  // Save answers before page unload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAnswers));
+      
+      // Attempt to save current answer to server
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ) {
+        const answer = selectedAnswers[currentQ.id];
+        if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
+          // Use navigator.sendBeacon for reliable saving during page unload
+          const payload = {
+            test_id: parseInt(testId!),
+            answers: [{
+              question_id: currentQ.id,
+              option_id: answer.optionIds || answer.optionId || null,
+              text: answer.text || null
+            }]
+          };
+          
+          navigator.sendBeacon(
+            "http://13.233.33.133:3001/api/testsubmission/submitTest",
+            JSON.stringify(payload)
+          );
+        }
+      }
+
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [selectedAnswers, currentQuestionIndex, questions, testId]);
+
+  // Load test state from API - Updated to handle missing endpoint
+  const loadTestStateFromAPI = async () => {
+    if (!testId) return;
+
+    try {
+      // Try the original endpoint first
+      const response = await axios.get(
+        `http://13.233.33.133:3001/api/testsubmission/getTestQuestionsWithSubmissions?test_id=${testId}`,
+        axiosConfig
+      );
+
+      const apiData: ApiResponse = response.data;
+      console.log("API Response:", apiData);
+
+      if (apiData.questions && apiData.questions.length > 0) {
+        const answeredQuestionIds: number[] = [];
+        const restoredAnswers: { [key: number]: SelectedAnswer } = {};
+
+        apiData.questions.forEach((apiQuestion: ApiQuestion) => {
+          if (apiQuestion.status === "answered" && apiQuestion.submitted_options.length > 0) {
+            answeredQuestionIds.push(apiQuestion.question_id);
+            
+            // Restore the selected answers
+            if (apiQuestion.submitted_options.length === 1) {
+              // Single choice
+              restoredAnswers[apiQuestion.question_id] = {
+                optionId: apiQuestion.submitted_options[0],
+                text: null
+              };
+            } else if (apiQuestion.submitted_options.length > 1) {
+              // Multiple choice
+              restoredAnswers[apiQuestion.question_id] = {
+                optionIds: apiQuestion.submitted_options,
+                optionId: null,
+                text: null
+              };
+            }
+          }
+        });
+
+        setAnsweredQuestions(answeredQuestionIds);
+        
+        // Merge with existing selectedAnswers
+        setSelectedAnswers(prev => ({
+          ...prev,
+          ...restoredAnswers
+        }));
+
+        console.log("Restored answered questions:", answeredQuestionIds);
+        console.log("Restored answers:", restoredAnswers);
+      }
+    } catch (error: any) {
+      console.error("Failed to load test state from API:", error);
+      
+      // If the endpoint doesn't exist (404), try alternative approach
+      if (error.response?.status === 404) {
+        console.log("Endpoint not found, trying alternative approach...");
+        // await loadTestStateAlternative();
+      }
+    }
+  };
+
+  
   // Prevent context menu and tab switching
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -115,7 +251,6 @@ const TestScreen: React.FC = () => {
         setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
     } else if (timerActive && timeLeft === 0 && testStarted) {
-      // Time's up, auto-submit the test
       message.warning("Time's up! Submitting your test...");
       submitFinalResult();
     }
@@ -143,30 +278,35 @@ const TestScreen: React.FC = () => {
         console.log("questions fetching from responsessss:", submissionsResponse.data);
 
         const submissions = submissionsResponse.data?.submissions || [];
-        // Set a default duration if not available from API (e.g., 30 minutes)
         const durationInMinutes = testDuration ? parseInt(testDuration) : 0;
         setTimeLeft(durationInMinutes * 60);
 
         const questionsData: Question[] = [];
 
-        if (questionsData.length > 0) {
-          setSeenQuestions([questionsData[0].id]);
+        for (const submission of submissions) {
+          try {
+            const questionResponse = await axios.get(
+              `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
+              axiosConfig
+            );
+            questionsData.push(questionResponse.data.question);
+          } catch (error) {
+            console.error(`Failed to load question ${submission.question_id}:`, error);
+            // Continue loading other questions
+          }
         }
 
-        console.log("Setting questionssssssssss:", questionsData);
-
-        for (const submission of submissions) {
-          const questionResponse = await axios.get(
-            `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
-            axiosConfig
-          );
-          questionsData.push(questionResponse.data.question);
-          // console.log("questionsssss", questionResponse.data.question);
+        if (questionsData.length === 0) {
+          throw new Error("No questions could be loaded");
         }
 
         setQuestions(questionsData);
 
-        // Try to load answers from localStorage
+        if (questionsData.length > 0) {
+          setSeenQuestions([questionsData[0].id]);
+        }
+
+        // Load saved answers from localStorage first
         const savedAnswers = localStorage.getItem(STORAGE_KEY);
         let initialAnswers: typeof selectedAnswers = {};
 
@@ -186,6 +326,10 @@ const TestScreen: React.FC = () => {
         });
 
         setSelectedAnswers(initialAnswers);
+
+        // Load test state from API to restore previous answers
+        await loadTestStateFromAPI();
+
         setTestStarted(true);
         setTimerActive(true);
       } catch (error) {
@@ -200,8 +344,7 @@ const TestScreen: React.FC = () => {
     loadTest();
   }, [testId]);
 
-
-  // ...................................................
+  // Auto-save to localStorage when answers change
   useEffect(() => {
     if (Object.keys(selectedAnswers).length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedAnswers));
@@ -213,7 +356,6 @@ const TestScreen: React.FC = () => {
 
     try {
       setSubmitting(true);
-      // Auto-save the current answer before submitting
       const currentQ = questions[currentQuestionIndex];
 
       if (currentQ) {
@@ -222,18 +364,16 @@ const TestScreen: React.FC = () => {
         if (answer?.optionId || answer?.optionIds?.length || answer?.text) {
           await saveAnswerToServer(currentQ.id, answer);
         }
-        console.log("Answer saved before final submission", saveAnswerToServer(currentQ.id, answer));
       }
-    
 
       const response = await axios.get(
         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
         axiosConfig
       );
+
       setFinalResult(response.data.result);
       setIsFinalModalVisible(true);
 
-      // Clean up localStorage
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem("testDuration");
 
@@ -254,7 +394,6 @@ const TestScreen: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
-  // saveAnswerToServer function
   const saveAnswerToServer = async (
     questionId: number,
     answer: SelectedAnswer
@@ -265,12 +404,10 @@ const TestScreen: React.FC = () => {
       const question = questions.find((q) => q.id === questionId);
       if (!question) return;
 
-      // Determine the question type
       const isMultipleChoice = question.type === "multiple_choice";
       const isSingleChoice = question.type === "radio";
       const isText = question.type === "text";
 
-      // Prepare the answer payload
       const answerPayload: any = {
         question_id: questionId,
       };
@@ -290,25 +427,19 @@ const TestScreen: React.FC = () => {
         test_id: parseInt(testId),
         answers: [answerPayload],
       };
+      
       console.log("Payload to save answer:", payload);
       const response = await axios.post(
         "http://13.233.33.133:3001/api/testsubmission/submitTest",
         payload,
         axiosConfig
       );
-      console.log("Response from server:", response.data);
-    
-      return
 
-      // Check if all questions are answered
-      if (response.data.pendingsubmission?.total_open === 0) {
-        // Submit final result using GET
-        const finalResponse = await axios.get(
-          `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
-          axiosConfig
-        );
-        setFinalResult(finalResponse.data.result);
-        setIsFinalModalVisible(true);
+      console.log("Response from server:", response.data);
+
+      // Update answered questions list
+      if (!answeredQuestions.includes(questionId)) {
+        setAnsweredQuestions(prev => [...prev, questionId]);
       }
 
       return response.data;
@@ -319,73 +450,106 @@ const TestScreen: React.FC = () => {
     }
   };
 
+  const handleSubmitConfirmation = () => {
+    setIsSubmitConfirmVisible(true);
+  };
 
-  const handleNext = async () => {
+  const handleConfirmedSubmit = async () => {
+    setIsSubmitConfirmVisible(false);
+    
     const currentQ = questions[currentQuestionIndex];
-    console.log("Current Question ID:", currentQ.id);
     const answer = selectedAnswers[currentQ.id];
-    console.log("Selected Answer:", answer);
-    // Submit answer if any option is selected or text is entered
+    
     if (answer?.optionId || answer?.optionIds || answer?.text) {
       await saveAnswerToServer(currentQ.id, answer);
     }
-    console.log("Answer saved to server");
 
     if (!seenQuestions.includes(currentQ.id)) {
       setSeenQuestions([...seenQuestions, currentQ.id]);
     }
 
-    console.log("Seen Questions:", seenQuestions);
-
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      // Calculate answered and unanswered
-      const answered = questions.filter(
+    const answered = questions.filter(
       (q) =>
         (selectedAnswers[q.id]?.optionId !== null && selectedAnswers[q.id]?.optionId !== undefined) ||
         ((selectedAnswers[q.id]?.optionIds ?? []).length > 0) ||
         (selectedAnswers[q.id]?.text && (selectedAnswers[q.id]?.text ?? "").trim() !== "")
-      ).length;
-      const unanswered = questions.length - answered;
+    ).length;
+    const unanswered = questions.length - answered;
 
-      console.log("Attempted (answered):", answered);
-      console.log("Unattempted (unanswered):", unanswered);
-      console.log("Total Questions:", questions.length);
-
-      // If we are at the last question (last index), submit the test
-      if (currentQuestionIndex === questions.length - 1) {
-      try {
-        setSubmitting(true);
-        const response = await axios.get(
+    try {
+      setSubmitting(true);
+      const response = await axios.get(
         `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
         axiosConfig
-        );
-        // Overwrite attempt/unattempted in finalResult for modal
-        setFinalResult({
+      );
+      
+      setFinalResult({
         ...response.data.result,
         attempted: answered,
         unattempted: unanswered,
-        });
-        setIsFinalModalVisible(true);
-        localStorage.removeItem(STORAGE_KEY);
-      } catch (error) {
-        console.error("Failed to submit final result:", error);
-        message.error("Failed to submit final result");
-      } finally {
-        setSubmitting(false);
-      }
-      return; // Prevent further execution
-      }
+      });
+      setIsFinalModalVisible(true);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error("Failed to submit final result:", error);
+      message.error("Failed to submit final result");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-      return;
+  const handleNext = async () => {
+    const currentQ = questions[currentQuestionIndex];
+    const answer = selectedAnswers[currentQ.id];
+    
+    if (answer?.optionId || answer?.optionIds || answer?.text) {
+      await saveAnswerToServer(currentQ.id, answer);
+    }
+
+    if (!seenQuestions.includes(currentQ.id)) {
+      setSeenQuestions([...seenQuestions, currentQ.id]);
+    }
+
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      const answered = questions.filter(
+        (q) =>
+          (selectedAnswers[q.id]?.optionId !== null && selectedAnswers[q.id]?.optionId !== undefined) ||
+          ((selectedAnswers[q.id]?.optionIds ?? []).length > 0) ||
+          (selectedAnswers[q.id]?.text && (selectedAnswers[q.id]?.text ?? "").trim() !== "")
+      ).length;
+      const unanswered = questions.length - answered;
+
+      if (currentQuestionIndex === questions.length - 1) {
+        try {
+          setSubmitting(true);
+          const response = await axios.get(
+            `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+            axiosConfig
+          );
+          
+          setFinalResult({
+            ...response.data.result,
+            attempted: answered,
+            unattempted: unanswered,
+          });
+          setIsFinalModalVisible(true);
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.error("Failed to submit final result:", error);
+          message.error("Failed to submit final result");
+        } finally {
+          setSubmitting(false);
+        }
+        return;
+      }
     }
   };
 
   const handlePrevious = () => {
     const currentQ = questions[currentQuestionIndex];
 
-    // Mark current question as seen
     if (!seenQuestions.includes(currentQ.id)) {
       setSeenQuestions([...seenQuestions, currentQ.id]);
     }
@@ -405,7 +569,6 @@ const TestScreen: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      // Only clear if test is not completed
       if (!isModalVisible) {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -422,6 +585,7 @@ const TestScreen: React.FC = () => {
       </div>
     );
   }
+
   if (!testStarted && !loading && (!test || questions.length === 0)) {
     return (
       <div
@@ -480,7 +644,7 @@ const TestScreen: React.FC = () => {
                 Attempted:{" "}
                 {
                   Object.values(selectedAnswers).filter(
-                    (answer) => answer.optionId !== null || answer.text !== null
+                    (answer) => answer.optionId !== null || answer.text !== null || (answer.optionIds && answer.optionIds.length > 0)
                   ).length
                 }
                 /{questions.length}
@@ -618,7 +782,7 @@ const TestScreen: React.FC = () => {
               >
                 Previous
               </Button>
-                {currentQuestionIndex < questions.length - 1 && (
+              {currentQuestionIndex < questions.length - 1 && (
                 <Button
                   type="primary"
                   onClick={handleNext}
@@ -626,16 +790,16 @@ const TestScreen: React.FC = () => {
                 >
                   {submitting ? <Spin size="small" /> : "Next"}
                 </Button>
-                )}
-                {currentQuestionIndex === questions.length - 1 && (
+              )}
+              {currentQuestionIndex === questions.length - 1 && (
                 <Button
                   type="primary"
-                  onClick={handleNext}
+                  onClick={handleSubmitConfirmation}
                   disabled={submitting}
                 >
                   {submitting ? <Spin size="small" /> : "Submit"}
                 </Button>
-                )}
+              )}
             </Space>
           </Card>
         </Col>
@@ -644,15 +808,15 @@ const TestScreen: React.FC = () => {
           <Card title="Answer Status" bordered>
             <Space direction="vertical" size="small">
               <Space>
-                <div style={{ background: "#52c41a", width: 20, height: 20 }} />{" "}
+                <div style={{ background: "#52c41a", width: 20, height: 20 }} />
                 <Text>Attempted</Text>
               </Space>
               <Space>
-                <div style={{ background: "#1890ff", width: 20, height: 20 }} />{" "}
+                <div style={{ background: "#1890ff", width: 20, height: 20 }} />
                 <Text>Seen but Not Answered</Text>
               </Space>
               <Space>
-                <div style={{ background: "#faad14", width: 20, height: 20 }} />{" "}
+                <div style={{ background: "#faad14", width: 20, height: 20 }} />
                 <Text>Not Seen</Text>
               </Space>
             </Space>
@@ -666,10 +830,14 @@ const TestScreen: React.FC = () => {
               }}
             >
               {questions.map((q, index) => {
-                const answered =
+                // Check if answered from API response or current selections
+                const answeredFromAPI = answeredQuestions.includes(q.id);
+                const answeredFromCurrent = 
                   (selectedAnswers[q.id]?.optionIds?.length || 0) > 0 ||
                   selectedAnswers[q.id]?.optionId !== null ||
-                  selectedAnswers[q.id]?.text !== null;
+                  (selectedAnswers[q.id]?.text && selectedAnswers[q.id]?.text?.trim() !== "");
+                
+                const answered = answeredFromAPI || answeredFromCurrent;
                 const seen = seenQuestions.includes(q.id);
 
                 let bgColor = "#faad14"; // Gold - not seen
@@ -703,10 +871,10 @@ const TestScreen: React.FC = () => {
             <Space direction="vertical" size="middle" style={{ width: "100%" }}>
               <div
                 style={{
-                  border: "2px solid #52c41a", // Green border
+                  border: "2px solid #52c41a",
                   borderRadius: "4px",
                   padding: "8px 16px",
-                  backgroundColor: "#f6ffed", // Light green background
+                  backgroundColor: "#f6ffed",
                   textAlign: "center",
                   width: "100%",
                 }}
@@ -720,10 +888,10 @@ const TestScreen: React.FC = () => {
               </div>
               <div
                 style={{
-                  border: "2px solid #ff4d4f", // Red border
+                  border: "2px solid #ff4d4f",
                   borderRadius: "4px",
                   padding: "8px 16px",
-                  backgroundColor: "#fff2f0", // Light red background
+                  backgroundColor: "#fff2f0",
                   textAlign: "center",
                   width: "100%",
                 }}
@@ -740,50 +908,18 @@ const TestScreen: React.FC = () => {
         </Col>
       </Row>
 
-      {/* <Modal
-          title="Test Result"
-          open={isModalVisible}
-          onOk={handleModalOk}
-          onCancel={handleModalOk}
-          okText="OK"
-          width={800}
-          footer={[
-            <Button key="submit" type="primary" onClick={handleModalOk}>
-              OK
-            </Button>,
-          ]}
-        >
-          {testResult && (
-            <Table
-              dataSource={[
-                {
-                  key: "1",
-                  label: "Total Questions",
-                  value: testResult.totalQuestions,
-                },
-                { key: "2", label: "Attempted", value: testResult.attempted },
-                { key: "3", label: "Correct", value: testResult.correct },
-                { key: "4", label: "Wrong", value: testResult.wrong },
-                {
-                  key: "5",
-                  label: "Final Score",
-                  value: `${testResult.finalScore}%`,
-                },
-                {
-                  key: "6",
-                  label: "Final Result",
-                  value: testResult.finalResult,
-                },
-              ]}
-              columns={[
-                { title: "Details", dataIndex: "label", key: "label" },
-                { title: "Result", dataIndex: "value", key: "value" },
-              ]}
-              pagination={false}
-              bordered
-            />
-          )}
-        </Modal> */}
+      <Modal
+        title="Confirm Submission"
+        open={isSubmitConfirmVisible}
+        onOk={handleConfirmedSubmit}
+        onCancel={() => setIsSubmitConfirmVisible(false)}
+        okText="Yes, Submit"
+        cancelText="Cancel"
+        confirmLoading={submitting}
+      >
+        <Text>Are you sure you want to submit the test? You won't be able to make any changes after submission.</Text>
+      </Modal>
+
       <Modal
         title="Test Completed"
         open={isFinalModalVisible}

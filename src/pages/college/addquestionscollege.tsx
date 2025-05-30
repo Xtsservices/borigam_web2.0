@@ -12,7 +12,9 @@ import {
   Upload,
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
+import CollegeLayoutWrapper from "../../components/collegeLayout/collegeLayoutWrapper";
+import { useParams, useNavigate } from "react-router-dom";
+
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -29,14 +31,15 @@ interface QuestionOption {
   image?: File | null;
 }
 
-const AddQuestions = () => {
+const AddQuestionsCollege = () => {
+  const { collegeId } = useParams();
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const questionTypes = ["radio", "multiple_choice", "text"];
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [questionText, setQuestionText] = useState<string>("");
-    const [explanation, setExplanation] = useState<string>("");
-
+  const [explanation, setExplanation] = useState<string>("");
   const [questionType, setQuestionType] = useState<string>("");
   const [options, setOptions] = useState<QuestionOption[]>([
     { option_text: "", is_correct: false },
@@ -93,7 +96,6 @@ const AddQuestions = () => {
         prev.map((opt, i) => ({ ...opt, is_correct: i === index }))
       );
     } else if (questionType === "multiple_choice") {
-      // Updated
       setOptions((prev) =>
         prev.map((opt, i) =>
           i === index ? { ...opt, is_correct: isCorrect } : opt
@@ -104,7 +106,6 @@ const AddQuestions = () => {
 
   const handleQuestionTypeChange = (type: string) => {
     setQuestionType(type);
-    // Reset options when question type changes
     if (type !== "text") {
       setOptions([
         { option_text: "", is_correct: false },
@@ -131,7 +132,6 @@ const AddQuestions = () => {
       return false;
     }
 
-    // Validation for radio and multiple_choice questions
     if (questionType === "radio" || questionType === "multiple_choice") {
       const hasCorrectOption = options.some((option) => option.is_correct);
       if (!hasCorrectOption) {
@@ -155,7 +155,7 @@ const AddQuestions = () => {
       questionType === "multiple_choice"
         ? "multiple_choice"
         : questionType.toLowerCase().replace(" ", "_")
-    ); // Updated
+    );
     formData.append("course_id", (selectedCourseId ?? "").toString());
     formData.append("total_marks", totalMarks.toString());
     formData.append("negative_marks", negativeMarks.toString());
@@ -174,28 +174,23 @@ const AddQuestions = () => {
         .map((option) => option.image)
         .filter((image) => image instanceof File);
 
-        console.log("imageOptions", imageOptions);
-   
-        if (imageOptions.length > 0) {
-          imageOptions.forEach((image: File, index: number) => {
-            formData.append(`imageOption${index + 1}`, image as File);
-          });
-        }
-
+      if (imageOptions.length > 0) {
+        imageOptions.forEach((image: File, index: number) => {
+          formData.append(`imageOption${index + 1}`, image as File);
+        });
+      }
     }
+
     if (questionImageFile) {
       formData.append("image", questionImageFile);
     }
 
-
-   formData.append("explanation", explanation);
-
-    console.log("Form Data:", formData);
-
+    // formData.append("explanation", explanation);
 
     try {
       const response = await fetch(
         "http://13.233.33.133:3001/api/question/createQuestion",
+        // 
         {
           method: "POST",
           headers: {
@@ -225,11 +220,13 @@ const AddQuestions = () => {
       setTotalMarks(1);
       setNegativeMarks(0);
       setTextAnswer("");
+
+      // Navigate back to college dashboard
+      navigate(`/college/dashboard`);
     } catch (error) {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
-    // window.location.reload();
   };
 
   const handlePreSubmit = () => {
@@ -240,7 +237,7 @@ const AddQuestions = () => {
   };
 
   return (
-    <LayoutWrapper pageTitle="BORIGAM / Add Question">
+    <CollegeLayoutWrapper pageTitle="Add Question">
       <Card className="w-1/2 mx-auto p-6">
         <Form layout="vertical">
           <Form.Item
@@ -248,6 +245,7 @@ const AddQuestions = () => {
             name="course"
             rules={[{ required: true }]}
           >
+
             <Select
               onChange={(value) => {
                 const selectedCourse = courses.find(
@@ -395,7 +393,7 @@ const AddQuestions = () => {
             </Form.Item>
           )}
 
-          <Form.Item label="Explaination:(Optional)" >
+          <Form.Item label="Explaination (Optional) :">
             <TextArea
               rows={4}
               value={explanation}
@@ -423,8 +421,8 @@ const AddQuestions = () => {
         )}
         <br />
       </Modal>
-    </LayoutWrapper>
+    </CollegeLayoutWrapper>
   );
 };
 
-export default AddQuestions;
+export default AddQuestionsCollege;

@@ -15,11 +15,30 @@ import {
   Typography,
   Row,
   Col,
-  Alert
+  Alert,
+  Divider,
+  Badge,
+  Statistic
 } from "antd";
-import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { 
+  EditOutlined, 
+  DeleteOutlined, 
+  PlusOutlined, 
+  SearchOutlined,
+  FilterOutlined,
+  ClearOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
+  BookOutlined,
+  FileTextOutlined,
+  TrophyOutlined
+} from "@ant-design/icons";
 import moment from "moment";
 import axios from "axios";
+import { useParams } from "react-router-dom";
+import CollegeLayoutWrapper from "../../components/collegeLayout/collegeLayoutWrapper";
+
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -53,23 +72,10 @@ interface Batch {
   course_id: number;
 }
 
-interface StudentComponentProps {
-  students: Student[];
-  loading: boolean;
-  collegeId?: string;
-  onAssignStudent: (student: Student) => void;
-  onDeleteStudent: (studentId: number) => Promise<void>;
-  onRefresh: () => Promise<void>;
-}
-
-const StudentComponent = ({
-   students,
-  loading,
-  collegeId,
-  onAssignStudent,
-  onDeleteStudent,
-  onRefresh,
-}: StudentComponentProps) => {
+const StudentComponent = () => {
+  const { collegeId } = useParams();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
@@ -89,60 +95,117 @@ const StudentComponent = ({
   const [searchText, setSearchText] = useState("");
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [filterLoading, setFilterLoading] = useState<boolean>(false);
+  const [filters, setFilters] = useState({
+    search: "",
+    courseId: null as number | null,
+  });
 
   useEffect(() => {
-    applySearchFilter(students, searchText);
-  }, [students, searchText]);
-
-  useEffect(() => {
-    const fetchData = async () => {
+    const fetchAllData = async () => {
+      setLoading(true);
       try {
-        await Promise.all([fetchCourses(), fetchBatches()]);
+        await Promise.all([
+          fetchStudents(),
+          fetchCourses(),
+          fetchBatches()
+        ]);
       } catch (error) {
         console.error("Error fetching data:", error);
+        message.error("Failed to load data");
+      } finally {
+        setLoading(false);
       }
     };
-    fetchData();
-  }, []);
 
-  const applySearchFilter = (studentsData: Student[], search: string) => {
-    if (!search.trim()) {
-      setFilteredStudents(studentsData);
+    fetchAllData();
+  }, [collegeId]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [students, filters]);
+
+  const fetchStudents = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      const errorMsg = "Authentication token missing. Please login again.";
+      setError(errorMsg);
+      message.error(errorMsg);
       return;
     }
-    
-    const searchText = search.trim().toLowerCase();
-    const filtered = studentsData.filter((student) => {
-      const studentFields = `${student.firstname} ${
-        student.lastname
-      } ${student.email} ${student.countrycode} ${
-        student.mobileno
-      } ${student.student_id} ${
-        student.college_name ?? ""
-      }`.toLowerCase();
-      
-      const courseFields =
-        student.courses
-          ?.map((c) =>
-            `${c.course_id} ${c.course_name}`.toLowerCase()
-          )
-          .join(" ") || "";
-      
-      const batchFields =
-        student.batches
-          ?.map((b) =>
-            `${b.batch_id} ${b.batch_name} ${b.start_date} ${b.end_date}`.toLowerCase()
-          )
-          .join(" ") || "";
-      
-      return (
-        studentFields.includes(searchText) ||
-        courseFields.includes(searchText) ||
-        batchFields.includes(searchText)
+
+    try {
+      const url = collegeId
+        ? `http://13.233.33.133:3001/api/student/getAllStudents?collegeId=${collegeId}`
+        : "http://13.233.33.133:3001/api/student/getAllStudents";
+
+      const response = await fetch(url, {
+        headers: { 
+          "Content-Type": "application/json", 
+          token: token 
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setStudents(result.data || []);
+      setError(null);
+    } catch (error: any) {
+      console.error("Error fetching students:", error);
+      const errorMsg = error.message || "Failed to fetch students";
+      setError(errorMsg);
+      message.error(errorMsg);
+    }
+  };
+
+  const applyFilters = () => {
+    let filteredData = [...students];
+
+    // Apply search filter
+    if (filters.search) {
+      const searchText = filters.search.trim().toLowerCase();
+      filteredData = filteredData.filter((student) => {
+        const studentFields = `${student.firstname} ${
+          student.lastname
+        } ${student.email} ${student.countrycode} ${
+          student.mobileno
+        } ${student.student_id} ${
+          student.college_name ?? ""
+        }`.toLowerCase();
+        
+        const courseFields =
+          student.courses
+            ?.map((c) =>
+              `${c.course_id} ${c.course_name}`.toLowerCase()
+            )
+            .join(" ") || "";
+        
+        const batchFields =
+          student.batches
+            ?.map((b) =>
+              `${b.batch_id} ${b.batch_name} ${b.start_date} ${b.end_date}`.toLowerCase()
+            )
+            .join(" ") || "";
+        
+        return (
+          studentFields.includes(searchText) ||
+          courseFields.includes(searchText) ||
+          batchFields.includes(searchText)
+        );
+      });
+    }
+
+    // Apply course filter
+    if (filters.courseId !== null) {
+      filteredData = filteredData.filter(student => 
+        student.courses?.some(course => course.course_id === filters.courseId)
       );
-    });
-    
-    setFilteredStudents(filtered);
+    }
+
+    setFilteredStudents(filteredData);
   };
 
   const fetchCourses = async () => {
@@ -312,11 +375,13 @@ const StudentComponent = ({
       );
 
       if (response.data.success) {
+        window.location.reload();
         message.success("Student updated successfully");
+        
         setIsModalVisible(false);
         setEditingStudent(null);
         form.resetFields();
-        await onRefresh();
+        await fetchStudents();
       } else {
         throw new Error(response.data.message || "Failed to update student");
       }
@@ -352,15 +417,13 @@ const StudentComponent = ({
         }
       );
 
-      alert("created student successfully" );
-
       window.location.reload();
 
       if (response.data.success) {
         message.success("Student created successfully!");
         setIsCreateModalVisible(false);
         createForm.resetFields();
-        window.location.reload();
+        await fetchStudents();
       } else {
         throw new Error(response.data.message || "Failed to create student");
       }
@@ -380,6 +443,10 @@ const StudentComponent = ({
     const filtered = batches.filter((batch) => batch.course_id === value);
     setFilteredBatches(filtered);
     assignForm.setFieldsValue({ batch: undefined });
+  };
+
+  const handleFilterCourseChange = (value: number | null) => {
+    setFilters({ ...filters, courseId: value });
   };
 
   const handleAssignCourse = async () => {
@@ -406,8 +473,6 @@ const StudentComponent = ({
         }
       );
 
-      alert("assigned student successfully");
-
       window.location.reload();
 
       if (response.data.success) {
@@ -417,7 +482,7 @@ const StudentComponent = ({
         setSelectedBatch(null);
         setFilteredBatches([]);
         assignForm.resetFields();
-        await onRefresh();
+        await fetchStudents();
       } else {
         throw new Error(response.data.message || "Failed to assign student");
       }
@@ -434,93 +499,162 @@ const StudentComponent = ({
   const handleDelete = async (studentId: number) => {
     try {
       setError(null);
-      await onDeleteStudent(studentId);
-      await onRefresh();
+      const response = await fetch(
+        "http://13.233.33.133:3001/api/student/deleteStudent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: localStorage.getItem("token") || "",
+          },
+          body: JSON.stringify({ studentId }),
+        }
+      );
+
+      window.location.reload();
+
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const result = await response.json();
+      if (result.ok) {
+        message.success("Student deleted successfully");
+        await fetchStudents();
+      } else {
+        throw new Error(result.message || "Failed to delete student");
+      }
     } catch (error: any) {
       console.error("Error deleting student:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Failed to delete student";
+      const errorMsg = error.message || "Failed to delete student";
       setError(errorMsg);
       message.error(errorMsg);
     }
   };
 
   const handleSearch = (value: string) => {
-    setSearchText(value);
+    setFilters({ ...filters, search: value });
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: "",
+      courseId: null,
+    });
   };
 
   const studentColumns = [
     {
-      title: "Student Name",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <FileTextOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Student Name
+        </span>
+      ),
       key: "studentName",
       render: (_: unknown, record: Student) => (
-        <Text strong>{`${record.firstname} ${record.lastname}`}</Text>
+        <Text strong style={{ fontSize: '14px' }}>{`${record.firstname} ${record.lastname}`}</Text>
       ),
     },
     {
-      title: "Email",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <BookOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Email
+        </span>
+      ),
       dataIndex: "email",
       key: "email",
-      render: (email: string) => <Text type="secondary">{email}</Text>,
+      render: (email: string) => <Text type="secondary" style={{ fontSize: '14px' }}>{email}</Text>,
     },
     {
-      title: "Phone Number",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <ClockCircleOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Phone Number
+        </span>
+      ),
       key: "phoneNumber",
       render: (_: unknown, record: Student) => (
-        <Text>{`${record.countrycode} ${record.mobileno}`}</Text>
+        <Text style={{ fontSize: '14px' }}>{`${record.countrycode} ${record.mobileno}`}</Text>
       ),
     },
     {
-      title: "College",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          College
+        </span>
+      ),
       dataIndex: "college_name",
       key: "college_name",
       render: (college: string) => college || "-",
     },
     {
-      title: "Courses",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <TrophyOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Courses
+        </span>
+      ),
       key: "courses",
       render: (_: unknown, record: Student) => (
         <div>
           {record.courses && record.courses.length > 0 ? (
             record.courses.map((course) => (
-              <Tag color="blue" key={course.course_id}>
+              <Tag 
+                color="blue" 
+                key={course.course_id}
+                style={{ marginBottom: 4, fontSize: '12px', padding: '4px 12px' }}
+              >
                 {course.course_name}
               </Tag>
             ))
           ) : (
-            <Tag color="orange">Not assigned</Tag>
+            <Tag color="orange" style={{ fontSize: '12px', padding: '4px 12px' }}>Not assigned</Tag>
           )}
         </div>
       ),
     },
     {
-      title: "Batches",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          Batches
+        </span>
+      ),
       key: "batches",
       render: (_: unknown, record: Student) => (
         <div>
           {record.batches && record.batches.length > 0 ? (
             record.batches.map((batch) => (
               <div key={batch.batch_id} style={{ marginBottom: 4 }}>
-                <Tag color="green">{batch.batch_name}</Tag>
-                <div style={{ fontSize: 12 }}>
+                <Tag 
+                  color="green" 
+                  style={{ fontSize: '12px', padding: '4px 12px' }}
+                >
+                  {batch.batch_name}
+                </Tag>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
                   {formatDateToDDMMYYYY(batch.start_date)} to{" "}
                   {formatDateToDDMMYYYY(batch.end_date)}
                 </div>
               </div>
             ))
           ) : (
-            <Tag color="orange">Not assigned</Tag>
+            <Tag color="orange" style={{ fontSize: '12px', padding: '4px 12px' }}>Not assigned</Tag>
           )}
         </div>
       ),
     },
     {
-      title: "Actions",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          Actions
+        </span>
+      ),
       key: "action",
       render: (_: unknown, record: Student) => (
         <Space size="middle">
           <Button
             type="text"
-            icon={<EditOutlined />}
+            icon={<EditOutlined style={{ color: '#8b5eab' }} />}
             onClick={() => showEditModal(record)}
             title="Edit"
           />
@@ -531,13 +665,23 @@ const StudentComponent = ({
             cancelText="No"
             placement="topRight"
           >
-            <Button type="text" danger icon={<DeleteOutlined />} title="Delete" />
+            <Button 
+              type="text" 
+              icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} 
+              title="Delete" 
+            />
           </Popconfirm>
           {(!record.courses || record.courses.length === 0) && (
             <Button
               type="primary"
               onClick={() => showAssignModal(record)}
-              style={{ background: "#8B5EAB", borderColor: "#8B5EAB" }}
+              style={{ 
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                border: 'none',
+                fontSize: '12px',
+                height: '32px',
+                padding: '0 12px'
+              }}
             >
               Assign Course
             </Button>
@@ -548,47 +692,129 @@ const StudentComponent = ({
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Card
-        title={<Title level={4} style={{ margin: 0 }}>Students Management</Title>}
-        extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsCreateModalVisible(true)}
-            style={{background: "linear-gradient(45deg, #FFA500, #FF6347)", borderColor: "#8B5EAB" }}
-          >
-            Add Student
-          </Button>
-        }
-        style={{ 
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-          borderRadius: '8px',
-          border: '1px solid #d9d9d9'
-        }}
-      >
-        {error && (
-          <Alert
-            description={error}
-            type="error"
-            closable
-            onClose={() => setError(null)}
-            style={{ marginBottom: '16px' }}
-          />
-        )}
+    <CollegeLayoutWrapper
+      pageTitle={collegeId ? "College Students" : "All Students"}
+    >
+    <div style={{ 
+      padding: "32px", 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      minHeight: '100vh'
+    }}>
+      <div style={{ 
+        background: 'white', 
+        borderRadius: '16px', 
+        padding: '32px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+      }}>
+        <Title 
+          level={2} 
+          style={{ 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontSize: '32px',
+            fontWeight: 700,
+            marginBottom: '8px'
+          }}
+        >
+          <FileTextOutlined style={{ marginRight: '12px', color: '#6366f1' }} />
+          Students Management
+        </Title>
         
-        <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
-          <Col xs={24} sm={12} md={8} lg={6}>
-            <Input.Search
-              placeholder="Search students..."
-              allowClear
-              size="large"
-              onSearch={handleSearch}
-              onChange={(e) => handleSearch(e.target.value)}
-              value={searchText}
-            />
-          </Col>
-        </Row>
+        <Card
+          style={{ 
+            marginBottom: 32, 
+            borderRadius: '16px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}
+          bodyStyle={{ padding: '24px' }}
+        >
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} sm={12} md={8}>
+              <Input.Search
+                placeholder="Search students..."
+                allowClear
+                size="large"
+                onSearch={handleSearch}
+                onChange={(e) => handleSearch(e.target.value)}
+                value={filters.search}
+                enterButton={
+                  <Button 
+                    icon={<SearchOutlined />} 
+                    style={{ 
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      border: 'none',
+                      height: '40px'
+                    }}
+                  >
+                    Search
+                  </Button>
+                }
+              />
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Button 
+                icon={<ClearOutlined />}
+                onClick={clearFilters}
+                style={{ 
+                  width: '100%',
+                  height: '40px',
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  border: 'none',
+                  color: 'white',
+                  fontWeight: 600,
+                  borderRadius: '8px'
+                }}
+              >
+                Clear Filters
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Select
+                style={{ width: '100%', height: '40px' }}
+                placeholder="Filter by course"
+                allowClear
+                value={filters.courseId}
+                onChange={handleFilterCourseChange}
+                suffixIcon={<FilterOutlined style={{ color: '#6366f1' }} />}
+                loading={filterLoading}
+              >
+                {courses.map((course) => (
+                  <Option key={course.id} value={course.id}>
+                    {course.name}
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} sm={24} md={4}>
+              <Statistic
+                title="Total Students"
+                value={filteredStudents.length}
+                valueStyle={{ 
+                  color: '#6366f1', 
+                  fontSize: '24px', 
+                  fontWeight: 700 
+                }}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={6}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsCreateModalVisible(true)}
+                style={{ 
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  border: 'none',
+                  height: '40px',
+                  width: '100%'
+                }}
+              >
+                Add Student
+              </Button>
+            </Col>
+          </Row>
+        </Card>
 
         <Spin spinning={loading} tip="Loading students...">
           <Table
@@ -596,270 +822,331 @@ const StudentComponent = ({
             dataSource={filteredStudents}
             rowKey="student_id"
             pagination={{ 
-              pageSize: 5,
+              pageSize:5,
               showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50', '100']
+              pageSizeOptions: ['10', '20', '50', '100'],
+              style: { padding: '16px 24px' }
             }}
-            bordered
-            scroll={{ x: 'max-content' }}
-            style={{ marginTop: '16px' }}
+            bordered={false}
+            style={{ 
+              background: 'white',
+              borderRadius: '16px',
+              border: '1px solid #e5e7eb',
+              overflow: 'hidden'
+            }}
+            onRow={(record) => ({
+              style: { 
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              },
+              onMouseEnter: (e) => {
+                e.currentTarget.style.backgroundColor = '#f8fafc';
+              },
+              onMouseLeave: (e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+              }
+            })}
           />
         </Spin>
-      </Card>
 
-      {/* Edit Student Modal */}
-      <Modal
-        title={<span style={{ color: '#8B5EAB' }}>Edit Student Details</span>}
-        open={isModalVisible}
-        onOk={handleUpdate}
-        onCancel={handleCancel}
-        confirmLoading={updateLoading}
-        footer={[
-          <Button key="back" onClick={handleCancel}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={updateLoading}
-            onClick={handleUpdate}
-            style={{ background: "#8B5EAB", border: "none" }}
-          >
-            Update
-          </Button>,
-        ]}
-        centered
-        width={700}
-        destroyOnClose
-      >
-        <Form form={form} layout="vertical" preserve={false}>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="firstname"
-                label="First Name"
-                rules={[{ required: true, message: "Please input first name!" }]}
-              >
-                <Input placeholder="Enter first name" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="lastname"
-                label="Last Name"
-                rules={[{ required: true, message: "Please input last name!" }]}
-              >
-                <Input placeholder="Enter last name" />
-              </Form.Item>
-            </Col>
-          </Row>
-          
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Please input email!" },
-              { type: "email", message: "Please enter a valid email!" },
-            ]}
-          >
-            <Input placeholder="Enter email address" />
-          </Form.Item>
-          
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                name="countrycode"
-                label="Country Code"
-                rules={[{ required: true, message: "Please input country code!" }]}
-              >
-                <Input placeholder="+91" />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item
-                name="mobileno"
-                label="Mobile Number"
-                rules={[{ required: true, message: "Please input mobile number!" }]}
-              >
-                <Input placeholder="Enter mobile number" />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
-
-      {/* Create Student Modal */}
-      <Modal
-        title={<span style={{ color: '#8B5EAB' }}>Create New Student</span>}
-        open={isCreateModalVisible}
-        onOk={handleCreateStudent}
-        onCancel={handleCreateCancel}
-        confirmLoading={createLoading}
-        footer={[
-          <Button key="back" onClick={handleCreateCancel}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={createLoading}
-            onClick={handleCreateStudent}
-            style={{ background: "#8B5EAB", border: "none" }}
-          >
-            Create
-          </Button>,
-        ]}
-        centered
-        width={700}
-        destroyOnClose
-      >
-        <Form form={createForm} layout="vertical" preserve={false}>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="firstname"
-                label="First Name"
-                rules={[{ required: true, message: "Please input first name!" }]}
-              >
-                <Input placeholder="Enter first name" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="lastname"
-                label="Last Name"
-                rules={[{ required: true, message: "Please input last name!" }]}
-              >
-                <Input placeholder="Enter last name" />
-              </Form.Item>
-            </Col>
-          </Row>
-          
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Please input email!" },
-              { type: "email", message: "Please enter a valid email!" },
-            ]}
-          >
-            <Input placeholder="Enter email address" />
-          </Form.Item>
-          
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                name="countrycode"
-                label="Country Code"
-                initialValue="+91"
-                rules={[{ required: true, message: "Please input country code!" }]}
-              >
-                <Input placeholder="+91" />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item
-                name="mobileno"
-                label="Mobile Number"
-                rules={[
-                  { required: true, message: "Please input mobile number!" },
-                  {
-                    pattern: /^[0-9]{10}$/,
-                    message: "Please enter a valid 10-digit mobile number!",
-                  },
-                ]}
-              >
-                <Input placeholder="Enter 10-digit mobile number" maxLength={10} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
-
-      {/* Assign Student Modal */}
-      <Modal
-        title={<span style={{ color: '#8B5EAB' }}>Assign Course to Student</span>}
-        open={isAssignModalVisible}
-        onOk={handleAssignCourse}
-        onCancel={handleAssignCancel}
-        confirmLoading={assignLoading}
-        footer={[
-          <Button key="back" onClick={handleAssignCancel}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={assignLoading}
-            onClick={handleAssignCourse}
-            style={{ background: "#8B5EAB", border: "none" }}
-            disabled={!selectedCourse || !selectedBatch}
-          >
-            Assign
-          </Button>,
-        ]}
-        centered
-        destroyOnClose
-      >
-        {selectedStudent && (
-          <div style={{ marginBottom: '16px' }}>
-            <Text strong>Student:</Text>{' '}
-            <Text>{`${selectedStudent.firstname} ${selectedStudent.lastname}`}</Text>
-          </div>
-        )}
-        
-        <Form form={assignForm} layout="vertical" preserve={false}>
-          <Form.Item 
-            name="course"
-            label={<Text strong>Select Course</Text>} 
-            rules={[{ required: true, message: "Please select a course!" }]}
-          >
-            <Select
-              placeholder="Select a course"
-              style={{ width: "100%" }}
-              onChange={handleCourseChange}
-              value={selectedCourse}
-              showSearch
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.children as unknown as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
+        {/* Edit Student Modal */}
+        <Modal
+          title={<span style={{ color: '#8b5eab', fontWeight: 600 }}>Edit Student Details</span>}
+          open={isModalVisible}
+          onOk={handleUpdate}
+          onCancel={handleCancel}
+          confirmLoading={updateLoading}
+          footer={[
+            <Button key="back" onClick={handleCancel} style={{ height: '40px', borderRadius: '8px' }}>
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              loading={updateLoading}
+              onClick={handleUpdate}
+              style={{ 
+                background: 'linear-gradient(135deg, #8b5eab 0%, #6b46c1 100%)',
+                border: 'none',
+                height: '40px',
+                borderRadius: '8px'
+              }}
             >
-              {courses.map((course) => (
-                <Option key={course.id} value={course.id}>
-                  {course.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          
-          <Form.Item 
-            name="batch"
-            label={<Text strong>Select Batch</Text>} 
-            rules={[{ required: true, message: "Please select a batch!" }]}
-          >
-            <Select
-              placeholder={selectedCourse ? "Select a batch" : "Please select a course first"}
-              style={{ width: "100%" }}
-              onChange={(value) => setSelectedBatch(value)}
-              value={selectedBatch}
-              disabled={!selectedCourse}
-              showSearch
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.children as unknown as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
+              Update
+            </Button>,
+          ]}
+          centered
+          width={700}
+          destroyOnClose
+          bodyStyle={{ padding: '24px' }}
+        >
+          <Form form={form} layout="vertical" preserve={false}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="firstname"
+                  label={<Text strong>First Name</Text>}
+                  rules={[{ required: true, message: "Please input first name!" }]}
+                >
+                  <Input placeholder="Enter first name" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="lastname"
+                  label={<Text strong>Last Name</Text>}
+                  rules={[{ required: true, message: "Please input last name!" }]}
+                >
+                  <Input placeholder="Enter last name" size="large" />
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Form.Item
+              name="email"
+              label={<Text strong>Email</Text>}
+              rules={[
+                { required: true, message: "Please input email!" },
+                { type: "email", message: "Please enter a valid email!" },
+              ]}
             >
-              {filteredBatches.map((batch) => (
-                <Option key={batch.batch_id} value={batch.batch_id}>
-                  {batch.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
+              <Input placeholder="Enter email address" size="large" />
+            </Form.Item>
+            
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="countrycode"
+                  label={<Text strong>Country Code</Text>}
+                  rules={[{ required: true, message: "Please input country code!" }]}
+                >
+                  <Input placeholder="+91" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={16}>
+                <Form.Item
+                  name="mobileno"
+                  label={<Text strong>Mobile Number</Text>}
+                  rules={[{ required: true, message: "Please input mobile number!" }]}
+                >
+                  <Input placeholder="Enter mobile number" size="large" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Modal>
+
+        {/* Create Student Modal */}
+        <Modal
+          title={<span style={{ color: '#8b5eab', fontWeight: 600 }}>Create New Student</span>}
+          open={isCreateModalVisible}
+          onOk={handleCreateStudent}
+          onCancel={handleCreateCancel}
+          confirmLoading={createLoading}
+          footer={[
+            <Button key="back" onClick={handleCreateCancel} style={{ height: '40px', borderRadius: '8px' }}>
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              loading={createLoading}
+              onClick={handleCreateStudent}
+              style={{ 
+                background: 'linear-gradient(135deg, #8b5eab 0%, #6b46c1 100%)',
+                border: 'none',
+                height: '40px',
+                borderRadius: '8px'
+              }}
+            >
+              Create
+            </Button>,
+          ]}
+          centered
+          width={700}
+          destroyOnClose
+          bodyStyle={{ padding: '24px' }}
+        >
+          <Form form={createForm} layout="vertical" preserve={false}>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="firstname"
+                  label={<Text strong>First Name</Text>}
+                  rules={[{ required: true, message: "Please input first name!" }]}
+                >
+                  <Input placeholder="Enter first name" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="lastname"
+                  label={<Text strong>Last Name</Text>}
+                  rules={[{ required: true, message: "Please input last name!" }]}
+                >
+                  <Input placeholder="Enter last name" size="large" />
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Form.Item
+              name="email"
+              label={<Text strong>Email</Text>}
+              rules={[
+                { required: true, message: "Please input email!" },
+                { type: "email", message: "Please enter a valid email!" },
+              ]}
+            >
+              <Input placeholder="Enter email address" size="large" />
+            </Form.Item>
+            
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="countrycode"
+                  label={<Text strong>Country Code</Text>}
+                  initialValue="+91"
+                  rules={[{ required: true, message: "Please input country code!" }]}
+                >
+                  <Input placeholder="+91" size="large" />
+                </Form.Item>
+              </Col>
+              <Col span={16}>
+                <Form.Item
+                  name="mobileno"
+                  label={<Text strong>Mobile Number</Text>}
+                  rules={[
+                    { required: true, message: "Please input mobile number!" },
+                    {
+                      pattern: /^[0-9]{10}$/,
+                      message: "Please enter a valid 10-digit mobile number!",
+                    },
+                  ]}
+                >
+                  <Input placeholder="Enter 10-digit mobile number" maxLength={10} size="large" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Modal>
+
+        {/* Assign Student Modal */}
+        <Modal
+          title={<span style={{ color: '#8b5eab', fontWeight: 600 }}>Assign Course to Student</span>}
+          open={isAssignModalVisible}
+          onOk={handleAssignCourse}
+          onCancel={handleAssignCancel}
+          confirmLoading={assignLoading}
+          footer={[
+            <Button key="back" onClick={handleAssignCancel} style={{ height: '40px', borderRadius: '8px' }}>
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              loading={assignLoading}
+              onClick={handleAssignCourse}
+              style={{ 
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                border: 'none',
+                height: '40px',
+                borderRadius: '8px'
+              }}
+              disabled={!selectedCourse || !selectedBatch}
+            >
+              Assign
+            </Button>,
+          ]}
+          centered
+          destroyOnClose
+          bodyStyle={{ padding: '24px' }}
+        >
+          {selectedStudent && (
+            <div style={{ marginBottom: '16px' }}>
+              <Text strong>Student:</Text>{' '}
+              <Text>{`${selectedStudent.firstname} ${selectedStudent.lastname}`}</Text>
+            </div>
+          )}
+          
+          <Form form={assignForm} layout="vertical" preserve={false}>
+            <Form.Item 
+              name="course"
+              label={<Text strong>Select Course</Text>} 
+              rules={[{ required: true, message: "Please select a course!" }]}
+            >
+              <Select
+                placeholder="Select a course"
+                style={{ width: "100%" }}
+                onChange={handleCourseChange}
+                value={selectedCourse}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+                size="large"
+              >
+                {courses.map((course) => (
+                  <Option key={course.id} value={course.id}>
+                    {course.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            
+            <Form.Item 
+              name="batch"
+              label={<Text strong>Select Batch</Text>} 
+              rules={[{ required: true, message: "Please select a batch!" }]}
+            >
+              <Select
+                placeholder={selectedCourse ? "Select a batch" : "Please select a course first"}
+                style={{ width: "100%" }}
+                onChange={(value) => setSelectedBatch(value)}
+                value={selectedBatch}
+                disabled={!selectedCourse}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+                size="large"
+              >
+                {filteredBatches.map((batch) => (
+                  <Option key={batch.batch_id} value={batch.batch_id}>
+                    {batch.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Form>
+        </Modal>
+      </div>
+      
+      <style>{`
+        .table-row-light {
+          background-color: #fafafa;
+        }
+        .table-row-dark {
+          background-color: white;
+        }
+        .ant-table-thead > tr > th {
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+          border-bottom: 2px solid #e5e7eb !important;
+          font-weight: 600 !important;
+          color: #1f2937 !important;
+          padding: 16px !important;
+        }
+        .ant-table-tbody > tr > td {
+          padding: 16px !important;
+          border-bottom: 1px solid #f3f4f6 !important;
+        }
+        .ant-table-tbody > tr:hover > td {
+          background-color: #f8fafc !important;
+        }
+      `}</style>
     </div>
+    </CollegeLayoutWrapper>
   );
 };
 

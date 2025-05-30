@@ -22,7 +22,10 @@ import StudentCompletedTest from "./pages/student/completedTests.tsx";
 import CollegeDashboard from "./pages/college/collegeDashboard.tsx";
 import TestScreen from "./pages/student/newtest.tsx";
 import BatchStudents from "./pages/admin/dashboard/viewBatchStudents.tsx";
-import UpComingTest from "./pages/admin/upComingTests.tsx";
+import AddTestCollege from './pages/college/addtestcollege';
+import AddQuestionsCollege from './pages/college/addquestionscollege';
+import StudentComponent from './pages/college/StudentComponent';
+import TestResultsSection from './pages/college/TestResultsSection';
 
 const App: React.FC = () => {
   return (
@@ -31,9 +34,9 @@ const App: React.FC = () => {
         <Route path="/signup" element={<SignUpForm />} />
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<HomePage />} />
-        <Route path= "/enquirynow" element={<EnquiryNow />} />
+        <Route path="/enquirynow" element={<EnquiryNow />} />
         <Route path="/forgotpassword" element={<ForgotPassword />} />
-        <Route path="/settingscreen" element={<ErrorHandling/>} />
+        <Route path="/settingscreen" element={<ErrorHandling />} />
         <Route path="/study-material" element={<StudyMaterial />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/Addquestions" element={<AddQuestions />} />
@@ -49,7 +52,6 @@ const App: React.FC = () => {
         <Route path="/dashboard/unassigned" element={<UnassignedStudents />} />
         <Route path="/dashboard/CompletedTest" element={<CompletedTest />} />
         <Route path="/dashboard/batch-students/:batchId" element={<BatchStudents />} />
-        <Route path="/dashboard/upcomingtest" element={<UpComingTest />} />
 
 
         {/* Student */}
@@ -61,6 +63,12 @@ const App: React.FC = () => {
         {/* Collage */}
 
         <Route path="/college/dashboard" element={<CollegeDashboard />} />
+        <Route path="/college/addtestcollege" element={<AddTestCollege />} />
+        <Route path="/college/addquestionscollege" element={<AddQuestionsCollege />} />
+
+       {/* College Students and Test Results Pages */}
+        <Route path="/college/students" element={<StudentComponent />} />
+        <Route path="/college/test-results" element={<TestResultsSection />} />
 
       </Routes>
     </Router>

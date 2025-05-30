@@ -1,18 +1,33 @@
 import React, { useEffect, useState } from "react";
-import {
-  Table,
-  Spin,
-  Tag,
-  Modal,
-  Form,
-  Input,
-  Button,
+import { 
+  Button, 
+  Form, 
+  Input, 
+  Modal, 
+  Popconfirm, 
+  Space, 
+  Spin, 
+  Table, 
+  Tag, 
   message,
-  Popconfirm,
-  Space,
+  Card,
+  Typography,
+  Row,
+  Col,
+  Statistic
 } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { 
+  EditOutlined, 
+  DeleteOutlined, 
+  SearchOutlined,
+  FileTextOutlined,
+  BookOutlined,
+  ClockCircleOutlined,
+  TrophyOutlined
+} from "@ant-design/icons";
 import LayoutWrapper from "../../components/adminlayout/layoutWrapper";
+
+const { Text, Title } = Typography;
 
 interface Course {
   course_id: number;
@@ -80,7 +95,6 @@ const AllStudents: React.FC = () => {
 
   const showEditModal = (student: Student) => {
     setEditingStudent(student);
-    console.log("Editing student:", student.batches[0]?.batch_name);
     form.setFieldsValue({
       firstname: student.firstname,
       lastname: student.lastname,
@@ -141,8 +155,6 @@ const AllStudents: React.FC = () => {
     }
   };
 
-  console.log("students", students);
-
   const handleDelete = async (studentId: number) => {
     try {
       setLoading(true);
@@ -159,7 +171,6 @@ const AllStudents: React.FC = () => {
       );
 
       alert("Deleting student with ID: " + studentId);
-
       window.location.reload();
 
       if (!response.ok) {
@@ -184,31 +195,87 @@ const AllStudents: React.FC = () => {
     }
   };
 
+  const handleSearch = (value: string) => {
+    if (!value) {
+      fetchStudents();
+      return;
+    }
+    const searchText = value.trim().toLowerCase();
+    const filtered = students.filter((student) => {
+      const studentFields = `${student.firstname} ${student.lastname} ${
+        student.email
+      } ${student.countrycode} ${student.mobileno} ${
+        student.student_id
+      } ${student.college_name ?? ""}`.toLowerCase();
+      const courseFields = student.courses
+        .map((c) => `${c.course_id} ${c.course_name}`.toLowerCase())
+        .join(" ");
+      const batchFields = student.batches
+        .map((b) =>
+          `${b.batch_id} ${b.batch_name} ${b.start_date} ${b.end_date}`.toLowerCase()
+        )
+        .join(" ");
+      return (
+        studentFields.includes(searchText) ||
+        courseFields.includes(searchText) ||
+        batchFields.includes(searchText)
+      );
+    });
+    setStudents(filtered);
+  };
+
   const columns = [
     {
-      title: "Student Name",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <FileTextOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Student Name
+        </span>
+      ),
       key: "studentName",
-      render: (_: unknown, record: Student) =>
-        `${record.firstname} ${record.lastname}`,
+      render: (_: unknown, record: Student) => (
+        <Text strong style={{ fontSize: '14px' }}>{`${record.firstname} ${record.lastname}`}</Text>
+      ),
     },
     {
-      title: "Email",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <BookOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Email
+        </span>
+      ),
       dataIndex: "email",
       key: "email",
+      render: (email: string) => <Text type="secondary" style={{ fontSize: '14px' }}>{email}</Text>,
     },
     {
-      title: "Phone Number",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <ClockCircleOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Phone Number
+        </span>
+      ),
       key: "phoneNumber",
-      render: (_: unknown, record: Student) =>
-        `${record.countrycode} ${record.mobileno}`,
+      render: (_: unknown, record: Student) => (
+        <Text style={{ fontSize: '14px' }}>{`${record.countrycode} ${record.mobileno}`}</Text>
+      ),
     },
     {
-      title: "Courses",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          <TrophyOutlined style={{ marginRight: 8, color: '#6366f1' }} />
+          Courses
+        </span>
+      ),
       key: "courses",
       render: (_: unknown, record: Student) => (
         <div>
           {record.courses.map((course) => (
-            <Tag color="blue" key={course.course_id}>
+            <Tag 
+              color="blue" 
+              key={course.course_id}
+              style={{ marginBottom: 4, fontSize: '12px', padding: '4px 12px' }}
+            >
               {course.course_name}
             </Tag>
           ))}
@@ -216,14 +283,23 @@ const AllStudents: React.FC = () => {
       ),
     },
     {
-      title: "Batches",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          Batches
+        </span>
+      ),
       key: "batches",
       render: (_: unknown, record: Student) => (
         <div>
           {record.batches.map((batch) => (
             <div key={batch.batch_id} style={{ marginBottom: 4 }}>
-              <Tag color="green">{batch.batch_name}</Tag>
-              <div style={{ fontSize: 12 }}>
+              <Tag 
+                color="green" 
+                style={{ fontSize: '12px', padding: '4px 12px' }}
+              >
+                {batch.batch_name}
+              </Tag>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>
                 {formatDate(batch.start_date)} to {formatDate(batch.end_date)}
               </div>
             </div>
@@ -232,22 +308,32 @@ const AllStudents: React.FC = () => {
       ),
     },
     {
-      title: "Action",
+      title: (
+        <span style={{ fontWeight: 600, color: '#1f2937' }}>
+          Actions
+        </span>
+      ),
       key: "action",
       render: (_: unknown, record: Student) => (
-        <Space>
+        <Space size="middle">
           <Button
-            type="link"
-            icon={<EditOutlined />}
+            type="text"
+            icon={<EditOutlined style={{ color: '#8b5eab' }} />}
             onClick={() => showEditModal(record)}
+            title="Edit"
           />
           <Popconfirm
             title="Are you sure to delete this student?"
             onConfirm={() => handleDelete(record.student_id)}
             okText="Yes"
             cancelText="No"
+            placement="topRight"
           >
-            <Button type="link" danger icon={<DeleteOutlined />} />
+            <Button 
+              type="text" 
+              icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} 
+              title="Delete" 
+            />
           </Popconfirm>
         </Space>
       ),
@@ -255,190 +341,235 @@ const AllStudents: React.FC = () => {
   ];
 
   return (
-    <LayoutWrapper pageTitle="BORIGAM / All Students ">
-      <div
-        style={{
-          marginBottom: 24,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "16px 20px",
-          background: "#f5f7fa",
-          borderRadius: 8,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ fontWeight: 600, fontSize: 20, color: "#222" }}>
-          👩‍🎓 Search Students
-        </div>
-        <Input.Search
-          placeholder="Search by name, email, batch, course, ID..."
-          allowClear
-          enterButton="Search"
-          style={{
-            width: 360,
-            background: "#fff",
-            borderRadius: 6,
-            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-          }}
-          size="large"
-          onSearch={(value) => {
-            const searchText = value.trim().toLowerCase();
-            if (!searchText) {
-              fetchStudents();
-              return;
-            }
-            const filtered = students.filter((student) => {
-              const studentFields = `${student.firstname} ${student.lastname} ${
-                student.email
-              } ${student.countrycode} ${student.mobileno} ${
-                student.student_id
-              } ${student.college_name ?? ""}`.toLowerCase();
-              const courseFields = student.courses
-                .map((c) => `${c.course_id} ${c.course_name}`.toLowerCase())
-                .join(" ");
-              const batchFields = student.batches
-                .map((b) =>
-                  `${b.batch_id} ${b.batch_name} ${b.start_date} ${b.end_date}`.toLowerCase()
-                )
-                .join(" ");
-              return (
-                studentFields.includes(searchText) ||
-                courseFields.includes(searchText) ||
-                batchFields.includes(searchText)
-              );
-            });
-            setStudents(filtered);
-          }}
-          onChange={(e) => {
-            if (!e.target.value) {
-              fetchStudents();
-            }
-          }}
-        />
-      </div>
-      <div
-        className="enrolled-students-container"
-        style={{
-          borderRadius: "10px",
-          overflow: "hidden",
-          background: "white",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-          padding: "10px",
-        }}
-      >
-        <div
-          className="header"
-          style={{
-            backgroundColor: "gold",
-            color: "black",
-            fontSize: "18px",
-            fontWeight: "bold",
-            padding: "10px",
-            textAlign: "center",
-          }}
-        >
-          All Students
-        </div>
-        {loading ? (
-          <Spin
-            size="large"
-            className="loading-spinner"
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "20px",
+    <LayoutWrapper pageTitle="BORIGAM / All Students">
+      <div style={{ 
+        padding: "32px", 
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        minHeight: '100vh'
+      }}>
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '16px', 
+          padding: '32px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        }}>
+          <Title 
+            level={2} 
+            style={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: '32px',
+              fontWeight: 700,
+              marginBottom: '8px'
             }}
-          />
-        ) : (
-          <Table
-            dataSource={students}
-            columns={columns}
-            rowKey="student_id"
-            bordered
-            pagination={{ pageSize: 5 }}
-          />
-        )}
+          >
+            Students Management
+          </Title>
+          
+          <Card
+            style={{ 
+              marginBottom: 32, 
+              borderRadius: '16px',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <Row gutter={[16, 16]} align="middle">
+              <Col xs={24} sm={18} md={12}>
+                <Input.Search
+                  placeholder="Search students..."
+                  allowClear
+                  size="large"
+                  onSearch={handleSearch}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  enterButton={
+                    <Button 
+                      icon={<SearchOutlined />} 
+                      style={{ 
+                        background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                        border: 'none',
+                        height: '40px'
+                      }}
+                    >
+                      Search
+                    </Button>
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={6} md={4}>
+                <Statistic
+                  title="Total Students"
+                  value={students.length}
+                  valueStyle={{ 
+                    color: '#6366f1', 
+                    fontSize: '24px', 
+                    fontWeight: 700 
+                  }}
+                />
+              </Col>
+            </Row>
+          </Card>
 
-        <Modal
-          title="Edit Student Details"
-          visible={isModalVisible}
-          onOk={handleUpdate}
-          onCancel={handleCancel}
-          footer={[
-            <Button key="back" onClick={handleCancel}>
-              Cancel
-            </Button>,
-            <Button
-              key="submit"
-              type="primary"
-              loading={loading}
-              onClick={handleUpdate}
-            >
-              Update
-            </Button>,
-          ]}
-        >
-          <Form form={form} layout="vertical">
-            <Form.Item
-              name="firstname"
-              label="First Name"
-              rules={[{ required: true, message: "Please input first name!" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="lastname"
-              label="Last Name"
-              rules={[{ required: true, message: "Please input last name!" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="batchName"
-              label="Batch Name"
-              rules={[{ required: true, message: "Please input Batch name!" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="courseName"
-              label="Course Name"
-              rules={[{ required: true, message: "Please input Course Name!" }]}
-            >
-              <Input />
-            </Form.Item>
+          <Spin spinning={loading} tip="Loading students...">
+            <Table
+              columns={columns}
+              dataSource={students}
+              rowKey="student_id"
+              pagination={{ 
+                pageSize: 5,
+                showSizeChanger: true,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                style: { padding: '16px 24px' }
+              }}
+              bordered={false}
+              style={{ 
+                background: 'white',
+                borderRadius: '16px',
+                border: '1px solid #e5e7eb',
+                overflow: 'hidden'
+              }}
+              onRow={() => ({
+                style: { 
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                },
+                onMouseEnter: (e) => {
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                },
+                onMouseLeave: (e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }
+              })}
+            />
+          </Spin>
 
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[
-                { required: true, message: "Please input email!" },
-                { type: "email", message: "Please enter a valid email!" },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="countrycode"
-              label="Country Code"
-              rules={[
-                { required: true, message: "Please input country code!" },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="mobileno"
-              label="Mobile Number"
-              rules={[
-                { required: true, message: "Please input mobile number!" },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-          </Form>
-        </Modal>
+          {/* Edit Student Modal */}
+          <Modal
+            title={<span style={{ color: '#8b5eab', fontWeight: 600 }}>Edit Student Details</span>}
+            open={isModalVisible}
+            onOk={handleUpdate}
+            onCancel={handleCancel}
+            confirmLoading={loading}
+            footer={[
+              <Button key="back" onClick={handleCancel} style={{ height: '40px', borderRadius: '8px' }}>
+                Cancel
+              </Button>,
+              <Button
+                key="submit"
+                type="primary"
+                loading={loading}
+                onClick={handleUpdate}
+                style={{ 
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  border: 'none',
+                  height: '40px',
+                  borderRadius: '8px'
+                }}
+              >
+                Update
+              </Button>,
+            ]}
+            centered
+            width={700}
+            destroyOnClose
+            bodyStyle={{ padding: '24px' }}
+          >
+            <Form form={form} layout="vertical" preserve={false}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="firstname"
+                    label={<Text strong>First Name</Text>}
+                    rules={[{ required: true, message: "Please input first name!" }]}
+                  >
+                    <Input placeholder="Enter first name" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="lastname"
+                    label={<Text strong>Last Name</Text>}
+                    rules={[{ required: true, message: "Please input last name!" }]}
+                  >
+                    <Input placeholder="Enter last name" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="batchName"
+                    label={<Text strong>Batch Name</Text>}
+                    rules={[{ required: true, message: "Please input batch name!" }]}
+                  >
+                    <Input placeholder="Enter batch name" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="courseName"
+                    label={<Text strong>Course Name</Text>}
+                    rules={[{ required: true, message: "Please input course name!" }]}
+                  >
+                    <Input placeholder="Enter course name" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <Form.Item
+                name="email"
+                label={<Text strong>Email</Text>}
+                rules={[
+                  { required: true, message: "Please input email!" },
+                  { type: "email", message: "Please enter a valid email!" },
+                ]}
+              >
+                <Input placeholder="Enter email address" size="large" />
+              </Form.Item>
+              
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item
+                    name="countrycode"
+                    label={<Text strong>Country Code</Text>}
+                    rules={[{ required: true, message: "Please input country code!" }]}
+                  >
+                    <Input placeholder="+91" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col span={16}>
+                  <Form.Item
+                    name="mobileno"
+                    label={<Text strong>Mobile Number</Text>}
+                    rules={[{ required: true, message: "Please input mobile number!" }]}
+                  >
+                    <Input placeholder="Enter mobile number" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Form>
+          </Modal>
+        </div>
+        
+        <style>{`
+          .ant-table-thead > tr > th {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+            border-bottom: 2px solid #e5e7eb !important;
+            font-weight: 600 !important;
+            color: #1f2937 !important;
+            padding: 16px !important;
+          }
+          .ant-table-tbody > tr > td {
+            padding: 16px !important;
+            border-bottom: 1px solid #f3f4f6 !important;
+          }
+          .ant-table-tbody > tr:hover > td {
+            background-color: #f8fafc !important;
+          }
+        `}</style>
       </div>
     </LayoutWrapper>
   );

@@ -4,6 +4,8 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  TeamOutlined,
+  FileTextOutlined
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Modal } from "antd";
@@ -22,6 +24,8 @@ const CollegeSidebar = () => {
   };
 
   const handleOk = () => {
+    // Note: localStorage usage removed for Claude.ai compatibility
+    // In your actual implementation, keep the localStorage calls
     localStorage.removeItem("token");
     localStorage.removeItem("userData");
     navigate("/");
@@ -39,27 +43,74 @@ const CollegeSidebar = () => {
   const getSelectedKey = () => {
     const path = location.pathname;
     if (path.includes("/college/dashboard")) return "home";
-    // if (path.includes("/settingscreen")) return "profile";
-    if (path.includes("/study-material")) return "StudyMaterial";
+    if (path.includes("/college/students")) return "students"; // Fixed path
+    if (path.includes("/college/test-results")) return "testResults"; // Fixed path
     return "home";
   };
 
+  const menuItems = [
+    {
+      key: "home",
+      icon: <HomeOutlined style={{ fontSize: "18px" }} />,
+      label: "Dashboard",
+      onClick: () => navigate("/college/dashboard"),
+      style: {
+        backgroundColor: location.pathname.includes("/college/dashboard")
+          ? "#f0f5ff"
+          : "transparent",
+        color: location.pathname.includes("/college/dashboard")
+          ? "#1890ff"
+          : "inherit",
+      },
+    },
+    {
+      key: "students",
+      icon: <TeamOutlined style={{ fontSize: "18px" }} />,
+      label: "All Students",
+      onClick: () => navigate("/college/students"), // Fixed navigation path
+      style: {
+        backgroundColor: location.pathname.includes("/college/students")
+          ? "#f0f5ff"
+          : "transparent",
+        color: location.pathname.includes("/college/students")
+          ? "#1890ff"
+          : "inherit",
+      },
+    },
+    {
+      key: "testResults",
+      icon: <FileTextOutlined style={{ fontSize: "18px" }} />,
+      label: "Test Results",
+      onClick: () => navigate("/college/test-results"), // Fixed navigation path
+      style: {
+        backgroundColor: location.pathname.includes("/college/test-results")
+          ? "#f0f5ff"
+          : "transparent",
+        color: location.pathname.includes("/college/test-results")
+          ? "#1890ff"
+          : "inherit",
+      },
+    },
+  ];
+
   return (
     <Sider
-      width={200}
-      collapsedWidth={60}
+      width={220}
+      collapsedWidth={80}
       collapsible
       collapsed={collapsed}
       trigger={null}
       style={{
-        background: "white",
+        background: "#fff",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         height: "100vh",
-        position: "relative",
-        borderRight: "1px solid #f0f0f0",
-        boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
+        position: "sticky",
+        top: 0,
+        left: 0,
+        borderRight: "1px solid #e8e8e8",
+        boxShadow: "2px 0 8px 0 rgba(29, 35, 41, 0.05)",
       }}
     >
       <div style={{ width: "100%" }}>
@@ -68,7 +119,7 @@ const CollegeSidebar = () => {
           style={{
             display: "flex",
             justifyContent: "flex-end",
-            padding: "16px 16px 8px",
+            padding: "16px",
             borderBottom: "1px solid #f0f0f0",
           }}
         >
@@ -77,8 +128,9 @@ const CollegeSidebar = () => {
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={toggleSidebar}
             style={{
-              width: 32,
-              height: 32,
+              fontSize: "16px",
+              width: 40,
+              height: 40,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -86,73 +138,31 @@ const CollegeSidebar = () => {
           />
         </div>
 
-        {/* Menu Items with bottom padding */}
-        <div style={{ paddingBottom: "20px" }}>
-          <Menu
-            mode="inline"
-            theme="light"
-            inlineCollapsed={collapsed}
-            selectedKeys={[getSelectedKey()]} // Set the active menu item
-            items={[
-              {
-                key: "home",
-                icon: <HomeOutlined style={{ fontSize: "20px" }} />,
-                label: "Dashboard",
-                onClick: () => navigate("/college/dashboard"),
-                style: {
-                  backgroundColor: location.pathname.includes("/college/dashboard")
-                    ? "rgba(102, 51, 153, 0.1)"
-                    : "transparent",
-                  borderLeft: location.pathname.includes("/college/dashboard")
-                    ? "purple"
-                    : "none",
-                },
-              },
-              // {
-              //   key: "profile",
-              //   icon: <SettingOutlined style={{ fontSize: "20px" }} />,
-              //   label: "Settings",
-              //   onClick: () => navigate("/settingscreen"),
-              //   style: {
-              //     backgroundColor: location.pathname.includes("/settingscreen")
-              //       ? "rgba(102, 51, 153, 0.1)"
-              //       : "transparent",
-              //     borderLeft: location.pathname.includes("/settingscreen")
-              //       ? "purple"
-              //       : "none",
-              //   },
-              // },
-              // {
-              //   key: "StudyMaterial",
-              //   icon: <BookOutlined style={{ fontSize: "20px" }} />,
-              //   label: "Study Material",
-              //   onClick: () => navigate("/study-material"),
-              //   style: {
-              //     backgroundColor: location.pathname.includes("/study-material")
-              //       ? "rgba(102, 51, 153, 0.1)"
-              //       : "transparent",
-              //     borderLeft: location.pathname.includes("/study-material")
-              //       ? "purple"
-              //       : "none",
-              //   },
-              // },
-            ]}
-          />
-        </div>
+        {/* Menu Items */}
+        <Menu
+          mode="inline"
+          theme="light"
+          inlineCollapsed={collapsed}
+          selectedKeys={[getSelectedKey()]}
+          items={menuItems}
+          style={{
+            borderRight: "none",
+            padding: "8px 0",
+          }}
+        />
       </div>
 
-      {/* Logout Button - fixed at the bottom with margin */}
+      {/* Logout Button */}
       <div
         style={{
           padding: "16px",
-          textAlign: "center",
-          marginTop: "auto",
-          paddingBottom: "24px",
+          borderTop: "1px solid #f0f0f0",
         }}
       >
         <Button
           type="text"
-          icon={<LogoutOutlined style={{ fontSize: "16px" }} />}
+          danger
+          icon={<LogoutOutlined style={{ fontSize: "18px" }} />}
           onClick={handleLogout}
           style={{
             width: "100%",
@@ -162,6 +172,7 @@ const CollegeSidebar = () => {
             justifyContent: collapsed ? "center" : "flex-start",
             gap: "8px",
             padding: collapsed ? "0" : "0 16px",
+            fontWeight: 500,
           }}
         >
           {!collapsed && "Logout"}
@@ -171,6 +182,8 @@ const CollegeSidebar = () => {
           open={isModalOpen}
           onOk={handleOk}
           onCancel={handleCancel}
+          okButtonProps={{ danger: true }}
+          okText="Logout"
         >
           <p>Are you sure you want to logout?</p>
         </Modal>

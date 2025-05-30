@@ -8,12 +8,19 @@ import {
   Input,
   Form,
   message,
+  Drawer,
+  DatePicker,
+  List,
+  Space,
+  Tag,
 } from "antd";
 import LayoutWrapper from "../../../components/adminlayout/layoutWrapper";
 import { useNavigate } from "react-router-dom";
 import add_dashboard from "../../../assets/add_dashboard.png";
+import dayjs from "dayjs";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 // Define TypeScript Interface for Course
 interface Course {
@@ -56,6 +63,18 @@ interface UnassignedStudents {
   count: number;
 }
 
+interface Announcement {
+  id: number;
+  start_date: string;
+  end_date: string;
+  text: string;
+  created_date: string | null;
+  updated_date: string | null;
+  status: string;
+  created_by_id: number;
+  updated_by_id: number;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [, setCourses] = useState<Course[]>([]);
@@ -63,10 +82,16 @@ const Dashboard = () => {
   const [students, setStudents] = useState<Students[]>([]);
   const [unassignedStudents, setunassignedStudents] =
     useState<UnassignedStudents>({ count: 0 });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  
   const [modalVisible, setModalVisible] = useState(false);
   const [modalVisible1, setModalVisible1] = useState(false);
+  const [createAnnouncementDrawer, setCreateAnnouncementDrawer] = useState(false);
+  const [viewAnnouncementDrawer, setViewAnnouncementDrawer] = useState(false);
+  
   const [form] = Form.useForm();
   const [form1] = Form.useForm();
+  const [announcementForm] = Form.useForm();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -104,6 +129,7 @@ const Dashboard = () => {
     fetchCourses();
     fetchStudents();
     fetchUnassignedStudentsCount();
+    fetchAnnouncements();
   }, []);
 
   const fetchColleges = async () => {
@@ -196,6 +222,38 @@ const Dashboard = () => {
     }
   };
 
+  const fetchAnnouncements = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found, authentication required");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://13.233.33.133:3001/api/announcements/getAnnouncements",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            token: token,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.type && result.data) {
+        setAnnouncements(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+    }
+  };
+
   const handleCollegeSubmit = async (values: any) => {
     try {
       const response = await fetch(
@@ -248,6 +306,47 @@ const Dashboard = () => {
     }
   };
 
+  const handleAnnouncementSubmit = async (values: any) => {
+    try {
+      const payload = {
+        start_date: values.start_date.format("DD-MM-YYYY"),
+        end_date: values.end_date.format("DD-MM-YYYY"),
+        text: values.text,
+      };
+
+      const response = await fetch(
+        "http://13.233.33.133:3001/api/announcements/createAnnouncement",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: localStorage.getItem("token") || "",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create announcement");
+      }
+
+      message.success("Announcement created successfully!");
+      setCreateAnnouncementDrawer(false);
+      announcementForm.resetFields();
+      fetchAnnouncements(); // Refresh announcements list
+    } catch (error) {
+      console.error("Error creating announcement:", error);
+      message.error("Failed to create announcement");
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    if (!timestamp) return "N/A";
+    // Convert Unix timestamp to readable date
+    const date = new Date(parseInt(timestamp) * 1000);
+    return date.toLocaleDateString();
+  };
+
   const handleCollegeClick = () => {
     setModalVisible(true);
   };
@@ -270,30 +369,30 @@ const Dashboard = () => {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          flexWrap: "nowrap", // Changed from wrap to nowrap
-          gap: "10px", // Reduced gap
-          marginBottom: "20px", // Allows horizontal scrolling if needed
+          flexWrap: "nowrap",
+          gap: "10px",
+          marginBottom: "20px",
         }}
       >
         {/* Students Card */}
         <Card
           style={{
-            minWidth: "30%", // Changed from fixed width to minWidth
+            minWidth: "22%",
             borderRadius: "10px",
             borderColor: "#8B5EAB",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            flexShrink: 0, // Prevents card from shrinking
+            flexShrink: 0,
           }}
         >
           <Button
             type="primary"
             style={{
-              background: "#8B5EAB",
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               borderColor: "#8B5EAB",
               width: "100%",
               fontWeight: "bold",
               marginBottom: "20px",
-              whiteSpace: "nowrap", // Prevents button text from wrapping
+              whiteSpace: "nowrap",
             }}
             onClick={handleStudentClick}
           >
@@ -302,14 +401,14 @@ const Dashboard = () => {
           <div
             style={{
               display: "flex",
-              gap: "8px", // Reduced gap
+              gap: "8px",
               flexWrap: "wrap",
               justifyContent: "center",
               marginBottom: "16px",
             }}
           >
             <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }} // Slightly smaller
+              style={{ width: "120px", height: "45px", fontSize: "14px" }}
               onClick={navigateToStudents}
             >
               All: {students.length}
@@ -326,7 +425,7 @@ const Dashboard = () => {
         {/* Tests Card */}
         <Card
           style={{
-            minWidth: "30%",
+            minWidth: "22%",
             borderRadius: "10px",
             borderColor: "#8B5EAB",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
@@ -336,7 +435,7 @@ const Dashboard = () => {
           <Button
             type="primary"
             style={{
-              background: "#8B5EAB",
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               borderColor: "#8B5EAB",
               width: "100%",
               fontWeight: "bold",
@@ -367,19 +466,13 @@ const Dashboard = () => {
             >
               Completed
             </Button>
-            <Button
-              style={{ width: "120px", height: "45px", fontSize: "14px" }}
-              onClick={() => navigate("/dashboard/upcomingtest")}
-            >
-              Upcoming
-            </Button>
           </div>
         </Card>
 
         {/* Colleges Card */}
         <Card
           style={{
-            minWidth: "30%",
+            minWidth: "22%",
             borderRadius: "10px",
             borderColor: "#8B5EAB",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
@@ -389,7 +482,7 @@ const Dashboard = () => {
           <Button
             type="primary"
             style={{
-              background: "#8B5EAB",
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               borderColor: "#8B5EAB",
               width: "100%",
               fontWeight: "bold",
@@ -423,7 +516,56 @@ const Dashboard = () => {
             </Button>
           </div>
         </Card>
+
+        {/* Announcements Card */}
+        <Card
+          style={{
+            minWidth: "22%",
+            borderRadius: "10px",
+            borderColor: "#8B5EAB",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            flexShrink: 0,
+          }}
+        >
+          <Button
+            type="primary"
+            style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              borderColor: "#8B5EAB",
+              width: "100%",
+              fontWeight: "bold",
+              marginBottom: "20px",
+              whiteSpace: "nowrap",
+            }}
+            onClick={() => setCreateAnnouncementDrawer(true)}
+          >
+            Announcements +
+          </Button>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              marginBottom: "16px",
+            }}
+          >
+            <Button
+              style={{ width: "120px", height: "45px", fontSize: "14px" }}
+              onClick={() => setViewAnnouncementDrawer(true)}
+            >
+              View All: {announcements.length}
+            </Button>
+            <Button
+              style={{ width: "120px", height: "45px", fontSize: "14px" }}
+              onClick={() => setCreateAnnouncementDrawer(true)}
+            >
+              Create New
+            </Button>
+          </div>
+        </Card>
       </div>
+
       <Card
         style={{
           width: "100%",
@@ -451,7 +593,7 @@ const Dashboard = () => {
           <Button
             type="primary"
             style={{
-              background: "#FFD439",
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               borderColor: "#FFD439",
               fontWeight: "bold",
               width: "200px",
@@ -464,7 +606,7 @@ const Dashboard = () => {
           <Button
             type="primary"
             style={{
-              background: "#8B5EAB",
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
               borderColor: "#8B5EAB",
               fontWeight: "bold",
               width: "200px",
@@ -475,6 +617,8 @@ const Dashboard = () => {
           </Button>
         </div>
       </Card>
+
+      {/* College Registration Modal */}
       <Modal
         title="Register College"
         open={modalVisible}
@@ -548,6 +692,8 @@ const Dashboard = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Student Registration Modal */}
       <Modal
         title="Register Student"
         open={modalVisible1}
@@ -562,7 +708,6 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-
           <Form.Item
             name={["lastname"]}
             label="Last Name"
@@ -570,7 +715,6 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-
           <Form.Item
             name={["email"]}
             label="Email"
@@ -580,7 +724,6 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-
           <Form.Item
             name={["countrycode"]}
             label="Country Code"
@@ -588,7 +731,6 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-
           <Form.Item
             name={["mobileno"]}
             label="Mobile Number"
@@ -596,7 +738,6 @@ const Dashboard = () => {
           >
             <Input />
           </Form.Item>
-
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Register
@@ -604,6 +745,105 @@ const Dashboard = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Create Announcement Drawer */}
+      <Drawer
+        title="Create Announcement"
+        placement="right"
+        onClose={() => setCreateAnnouncementDrawer(false)}
+        open={createAnnouncementDrawer}
+        width={400}
+      >
+        <Form
+          form={announcementForm}
+          layout="vertical"
+          onFinish={handleAnnouncementSubmit}
+        >
+          <Form.Item
+            name="start_date"
+            label="Start Date"
+            rules={[{ required: true, message: "Please select start date" }]}
+          >
+            <DatePicker
+              style={{ width: "100%" }}
+              format="DD-MM-YYYY"
+            />
+          </Form.Item>
+          <Form.Item
+            name="end_date"
+            label="End Date"
+            rules={[{ required: true, message: "Please select end date" }]}
+          >
+            <DatePicker
+              style={{ width: "100%" }}
+              format="DD-MM-YYYY"
+            />
+          </Form.Item>
+          <Form.Item
+            name="text"
+            label="Announcement Text"
+            rules={[{ required: true, message: "Please enter announcement text" }]}
+          >
+            <TextArea
+              rows={4}
+              placeholder="Enter your announcement here..."
+            />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                Create Announcement
+              </Button>
+              <Button onClick={() => setCreateAnnouncementDrawer(false)}>
+                Cancel
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Drawer>
+
+      {/* View Announcements Drawer */}
+      <Drawer
+        title="All Announcements"
+        placement="right"
+        onClose={() => setViewAnnouncementDrawer(false)}
+        open={viewAnnouncementDrawer}
+        width={500}
+      >
+        <List
+          dataSource={announcements}
+          renderItem={(item) => (
+            <List.Item>
+              <Card
+                size="small"
+                style={{ width: "100%", marginBottom: "10px" }}
+              >
+                <Space direction="vertical" style={{ width: "100%" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <Text strong>ID: {item.id}</Text>
+                    <Tag color={item.status === "active" ? "green" : "red"}>
+                      {item.status.toUpperCase()}
+                    </Tag>
+                  </div>
+                  <Text>{item.text}</Text>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      Start: {formatTimestamp(item.start_date)} | 
+                      End: {formatTimestamp(item.end_date)}
+                    </Text>
+                  </div>
+                  {item.created_date && (
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                      Created: {formatTimestamp(item.created_date)}
+                    </Text>
+                  )}
+                </Space>
+              </Card>
+            </List.Item>
+          )}
+          locale={{ emptyText: "No announcements found" }}
+        />
+      </Drawer>
     </LayoutWrapper>
   );
 };
