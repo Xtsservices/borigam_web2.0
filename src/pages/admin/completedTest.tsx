@@ -31,6 +31,7 @@ import {
   TrophyOutlined
 } from "@ant-design/icons";
 import LayoutWrapper from "../../components/adminlayout/layoutWrapper";
+import type { ColumnsType, Key } from 'antd/es/table/interface';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -312,6 +313,16 @@ const CompletedTest = () => {
     );
     const correctOptions = question.options.filter(opt => opt.is_correct);
 
+    // Remove duplicates from submitted options based on option_id
+    const uniqueSubmittedOptions = submittedOptions.filter((option, index, self) =>
+      index === self.findIndex(opt => opt.option_id === option.option_id)
+    );
+
+    // Remove duplicates from correct options based on option_id
+    const uniqueCorrectOptions = correctOptions.filter((option, index, self) =>
+      index === self.findIndex(opt => opt.option_id === option.option_id)
+    );
+
     return (
       <Panel 
         header={
@@ -346,7 +357,7 @@ const CompletedTest = () => {
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Text strong style={{ color: '#52c41a' }}>Correct Answer(s):</Text>
-              {correctOptions.map(option => (
+              {uniqueCorrectOptions.map(option => (
                 <div key={option.option_id} style={{ marginTop: 8 }}>
                   <Tag color="green">{option.option_text}</Tag>
                 </div>
@@ -358,7 +369,7 @@ const CompletedTest = () => {
                 Your Answer:
               </Text>
               {question.submission_status === 'answered' ? (
-                submittedOptions.map(option => (
+                uniqueSubmittedOptions.map(option => (
                   <div key={option.option_id} style={{ marginTop: 8 }}>
                     <Tag color={question.is_correct ? 'green' : 'red'}>
                       {option.option_text}
@@ -415,7 +426,7 @@ const CompletedTest = () => {
     );
   };
 
-  const columns = [
+  const columns: ColumnsType<TestResult> = [
     {
       title: (
         <span style={{ fontWeight: 600, color: '#1f2937' }}>
@@ -545,7 +556,13 @@ const CompletedTest = () => {
         { text: 'Pass', value: 'Pass' },
         { text: 'Fail', value: 'Fail' },
       ],
-      onFilter: (value: string | number | boolean, record: TestResult) => record.final_result === value,
+      onFilter: (value: boolean | Key, record: TestResult) => {
+        // Handle the Key type properly
+        const filterValue = typeof value === 'string' || typeof value === 'number' 
+          ? value.toString() 
+          : String(value);
+        return record.final_result === filterValue;
+      },
     },
     {
       title: (
