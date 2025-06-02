@@ -16,7 +16,7 @@ const ForgotPassword: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.post(
-        "http://localhost:3001/api/users/forgotPassword",
+        "http://13.233.33.133:3001/api/users/forgotPassword",
         {
           email: values.email,
         }

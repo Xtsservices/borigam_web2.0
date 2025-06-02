@@ -104,8 +104,8 @@ const TestResultsSection = ({ collegeId }: TestResultsSectionProps) => {
       setLoading(true);
       setError(null);
       const url = collegeId
-        ? `http://localhost:3001/api/student/getAllTestResultsForAllTests?collegeId=${collegeId}`
-        : "http://localhost:3001/api/student/getAllTestResultsForAllTests";
+        ? `http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests?collegeId=${collegeId}`
+        : "http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests";
 
       const response = await fetch(url, {
         method: "GET",

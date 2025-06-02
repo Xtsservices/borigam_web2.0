@@ -137,7 +137,7 @@ const CompletedTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/student/getAllTestResultsForAllTests",
+        "http://13.233.33.133:3001/api/student/getAllTestResultsForAllTests",
         {
           method: "GET",
           headers: {
@@ -165,7 +165,7 @@ const CompletedTest = () => {
     try {
       setFilterLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           method: "GET",
           headers: {
@@ -192,7 +192,7 @@ const CompletedTest = () => {
   const fetchAllBatches = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/viewAllBatches",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
           method: "GET",
           headers: {
@@ -218,7 +218,7 @@ const CompletedTest = () => {
     try {
       setDetailLoading(true);
       const response = await fetch(
-        `http://localhost:3001/api/testsubmission/getTestResultById?test_id=${testId}&user_id=${userId}`,
+        `http://13.233.33.133:3001/api/testsubmission/getTestResultById?test_id=${testId}&user_id=${userId}`,
         {
           method: "GET",
           headers: {

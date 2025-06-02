@@ -85,7 +85,7 @@ const addtestcollege = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
+        `http://13.233.33.133:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -110,7 +110,7 @@ const addtestcollege = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           headers: {
             "Content-Type": "application/json",
@@ -131,7 +131,7 @@ const addtestcollege = () => {
   const fetchBatches = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/viewAllBatches",
+        "http://13.233.33.133:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -206,7 +206,7 @@ const addtestcollege = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/question/createTest",
+        "http://13.233.33.133:3001/api/question/createTest",
         {
           method: "POST",
           headers: {
@@ -230,7 +230,7 @@ const addtestcollege = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:3001/api/question/deleteQuestion?id=${questionId}`,
+        `http://13.233.33.133:3001/api/question/deleteQuestion?id=${questionId}`,
         {
           method: "GET",
           headers: {

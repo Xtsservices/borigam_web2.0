@@ -125,7 +125,7 @@ const StudentDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await fetch(
-        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
+        "http://13.233.33.133:3001/api/studentdashbaord/getStudentTestStatus",
         {
           method: "GET",
           headers: {
@@ -160,7 +160,7 @@ const StudentDashboard: React.FC = () => {
     }
     try {
       const response = await fetch(
-        "http://localhost:3001/api/course/getCourses",
+        "http://13.233.33.133:3001/api/course/getCourses",
         {
           method: "GET",
           headers: {
@@ -189,7 +189,7 @@ const StudentDashboard: React.FC = () => {
     try {
       setAnnouncementsLoading(true);
       const response = await fetch(
-        "http://localhost:3001/api/announcements/getAnnouncements",
+        "http://13.233.33.133:3001/api/announcements/getAnnouncements",
         {
           method: "GET",
           headers: {
@@ -246,7 +246,7 @@ const StudentDashboard: React.FC = () => {
     try {
       setStartingTest(true);
       const response = await fetch(
-        `http://localhost:3001/api/testsubmission/startTest`,
+        `http://13.233.33.133:3001/api/testsubmission/startTest`,
         {
           method: "POST",
           headers: {
