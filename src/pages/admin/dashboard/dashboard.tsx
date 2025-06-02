@@ -104,7 +104,7 @@ const Dashboard = () => {
 
       try {
         const response = await fetch(
-          "http://13.233.33.133:3001/api/course/getCourses",
+          "http://localhost:3001/api/course/getCourses",
           {
             method: "GET",
             headers: {
@@ -141,7 +141,7 @@ const Dashboard = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/college/viewAllCollegesAndUsers",
+        "http://localhost:3001/api/college/viewAllCollegesAndUsers",
         {
           method: "GET",
           headers: {
@@ -171,7 +171,7 @@ const Dashboard = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/getUnassignedStudentsCount",
+        "http://localhost:3001/api/student/getUnassignedStudentsCount",
         {
           method: "GET",
           headers: {
@@ -202,7 +202,7 @@ const Dashboard = () => {
     }
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/getAllStudents",
+        "http://localhost:3001/api/student/getAllStudents",
         {
           method: "GET",
           headers: {
@@ -231,7 +231,7 @@ const Dashboard = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/announcements/getAnnouncements",
+        "http://localhost:3001/api/announcements/getAnnouncements",
         {
           method: "GET",
           headers: {
@@ -257,7 +257,7 @@ const Dashboard = () => {
   const handleCollegeSubmit = async (values: any) => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/college/registerCollege",
+        "http://localhost:3001/api/college/registerCollege",
         {
           method: "POST",
           headers: {
@@ -283,7 +283,7 @@ const Dashboard = () => {
   const handleStudentSubmit = async (values: any) => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/createStudent",
+        "http://localhost:3001/api/student/createStudent",
         {
           method: "POST",
           headers: {
@@ -315,7 +315,7 @@ const Dashboard = () => {
       };
 
       const response = await fetch(
-        "http://13.233.33.133:3001/api/announcements/createAnnouncement",
+        "http://localhost:3001/api/announcements/createAnnouncement",
         {
           method: "POST",
           headers: {

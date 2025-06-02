@@ -23,6 +23,7 @@ const { Option } = Select;
 interface OptionType {
   option_id: number;
   option_text: string;
+  image?: string; // Changed to 'image' to match API response
   is_correct?: boolean;
 }
 
@@ -84,7 +85,7 @@ const AddTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://13.233.33.133:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
+        `http://localhost:3001/api/question/getQuestionsByCourseId?id=${courseId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -109,7 +110,7 @@ const AddTest = () => {
   const fetchCourses = async () => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/getCourses",
+        "http://localhost:3001/api/course/getCourses",
         {
           headers: {
             "Content-Type": "application/json",
@@ -130,7 +131,7 @@ const AddTest = () => {
   const fetchBatches = async () => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/viewAllBatches",
+        "http://localhost:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -202,7 +203,7 @@ const AddTest = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/question/createTest",
+        "http://localhost:3001/api/question/createTest",
         {
           method: "POST",
           headers: {
@@ -226,7 +227,7 @@ const AddTest = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://13.233.33.133:3001/api/question/deleteQuestion?id=${questionId}`,
+        `http://localhost:3001/api/question/deleteQuestion?id=${questionId}`,
         {
           method: "GET",
           headers: {
@@ -397,27 +398,56 @@ const AddTest = () => {
                       />
                     )}
 
-                    {Array.isArray(question.options) &&
-                      question.options.map((option) => (
-                        <p
-                          style={{
-                            marginLeft: "20px",
-                            fontSize: "15px",
-                            fontWeight: option.is_correct ? "bold" : "normal",
-                            color: option.is_correct ? "#52c41a" : "inherit",
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                          key={option.option_id}
-                        >
-                          {option.option_text}
-                          {option.is_correct && (
-                            <Tag color="success" style={{ marginLeft: 8 }}>
-                              Correct
-                            </Tag>
-                          )}
-                        </p>
-                      ))}
+                    {/* Updated options rendering with image support */}
+                    <div style={{ marginLeft: "20px", marginTop: "10px" }}>
+                      {Array.isArray(question.options) &&
+                        question.options.map((option) => (
+                          <div
+                            key={option.option_id}
+                            style={{
+                              marginBottom: "10px",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: "10px",
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <p
+                                style={{
+                                  fontSize: "15px",
+                                  fontWeight: option.is_correct ? "bold" : "normal",
+                                  color: option.is_correct ? "#52c41a" : "inherit",
+                                  margin: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                              >
+                                {option.option_text}
+                                {option.is_correct && (
+                                  <Tag color="success">Correct</Tag>
+                                )}
+                              </p>
+                              
+                              {/* Display option image if available */}
+                              {option.image && (
+                                <img
+                                  src={option.image}
+                                  alt={`Option ${option.option_id}`}
+                                  style={{
+                                    width: "150px",
+                                    height: "150px",
+                                    objectFit: "cover",
+                                    marginTop: "8px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #d9d9d9",
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                   <div
                     style={{

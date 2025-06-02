@@ -62,7 +62,7 @@ const UnassignedStudents: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch("http://13.233.33.133:3001/api/student/getUnassignedStudentsList", {
+    fetch("http://localhost:3001/api/student/getUnassignedStudentsList", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -91,7 +91,7 @@ const UnassignedStudents: React.FC = () => {
     }
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/getCourses",
+        "http://localhost:3001/api/course/getCourses",
         {
           method: "GET",
           headers: {
@@ -117,7 +117,7 @@ const UnassignedStudents: React.FC = () => {
     }
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/viewAllBatches",
+        "http://localhost:3001/api/course/viewAllBatches",
         {
           method: "GET",
           headers: {
@@ -165,7 +165,7 @@ const UnassignedStudents: React.FC = () => {
 
     try {
       await axios.post(
-        "http://13.233.33.133:3001/api/student/assignStudentToCourse",
+        "http://localhost:3001/api/student/assignStudentToCourse",
         payload,
         { headers: { token: token || "" } }
       );

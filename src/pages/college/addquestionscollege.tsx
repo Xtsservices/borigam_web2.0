@@ -57,7 +57,7 @@ const AddQuestionsCollege = () => {
     const fetchData = async () => {
       try {
         const coursesResponse = await fetch(
-          "http://13.233.33.133:3001/api/course/getCourses",
+          "http://localhost:3001/api/course/getCourses",
           {
             headers: {
               "Content-Type": "application/json",
@@ -189,7 +189,7 @@ const AddQuestionsCollege = () => {
 
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/question/createQuestion",
+        "http://localhost:3001/api/question/createQuestion",
         // 
         {
           method: "POST",

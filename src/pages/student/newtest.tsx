@@ -149,7 +149,7 @@ const TestScreen: React.FC = () => {
           };
           
           navigator.sendBeacon(
-            "http://13.233.33.133:3001/api/testsubmission/submitTest",
+            "http://localhost:3001/api/testsubmission/submitTest",
             JSON.stringify(payload)
           );
         }
@@ -170,7 +170,7 @@ const TestScreen: React.FC = () => {
     try {
       // Try the original endpoint first
       const response = await axios.get(
-        `http://13.233.33.133:3001/api/testsubmission/getTestQuestionsWithSubmissions?test_id=${testId}`,
+        `http://localhost:3001/api/testsubmission/getTestQuestionsWithSubmissions?test_id=${testId}`,
         axiosConfig
       );
 
@@ -271,7 +271,7 @@ const TestScreen: React.FC = () => {
         }
 
         const submissionsResponse = await axios.get(
-          `http://13.233.33.133:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
+          `http://localhost:3001/api/testsubmission/getTestQuestionSubmissions?test_id=${testId}`,
           axiosConfig
         );
           
@@ -286,7 +286,7 @@ const TestScreen: React.FC = () => {
         for (const submission of submissions) {
           try {
             const questionResponse = await axios.get(
-              `http://13.233.33.133:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
+              `http://localhost:3001/api/testsubmission/setQuestionStatusUnanswered?test_id=${testId}&question_id=${submission.question_id}`,
               axiosConfig
             );
             questionsData.push(questionResponse.data.question);
@@ -367,7 +367,7 @@ const TestScreen: React.FC = () => {
       }
 
       const response = await axios.get(
-        `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+        `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
         axiosConfig
       );
 
@@ -430,7 +430,7 @@ const TestScreen: React.FC = () => {
       
       console.log("Payload to save answer:", payload);
       const response = await axios.post(
-        "http://13.233.33.133:3001/api/testsubmission/submitTest",
+        "http://localhost:3001/api/testsubmission/submitTest",
         payload,
         axiosConfig
       );
@@ -479,7 +479,7 @@ const TestScreen: React.FC = () => {
     try {
       setSubmitting(true);
       const response = await axios.get(
-        `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+        `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
         axiosConfig
       );
       
@@ -525,7 +525,7 @@ const TestScreen: React.FC = () => {
         try {
           setSubmitting(true);
           const response = await axios.get(
-            `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
+            `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${testId}`,
             axiosConfig
           );
           

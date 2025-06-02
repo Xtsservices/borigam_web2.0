@@ -136,8 +136,8 @@ const StudentComponent = () => {
 
     try {
       const url = collegeId
-        ? `http://13.233.33.133:3001/api/student/getAllStudents?collegeId=${collegeId}`
-        : "http://13.233.33.133:3001/api/student/getAllStudents";
+        ? `http://localhost:3001/api/student/getAllStudents?collegeId=${collegeId}`
+        : "http://localhost:3001/api/student/getAllStudents";
 
       const response = await fetch(url, {
         headers: { 
@@ -218,7 +218,7 @@ const StudentComponent = () => {
     }
     try {
       const response = await axios.get(
-        "http://13.233.33.133:3001/api/course/getCourses",
+        "http://localhost:3001/api/course/getCourses",
         {
           headers: {
             "Content-Type": "application/json",
@@ -258,7 +258,7 @@ const StudentComponent = () => {
     }
     try {
       const response = await axios.get(
-        "http://13.233.33.133:3001/api/course/viewAllBatches",
+        "http://localhost:3001/api/course/viewAllBatches",
         {
           headers: {
             "Content-Type": "application/json",
@@ -361,7 +361,7 @@ const StudentComponent = () => {
       const values = await form.validateFields();
 
       const response = await axios.post(
-        "http://13.233.33.133:3001/api/student/updateStudent",
+        "http://localhost:3001/api/student/updateStudent",
         {
           studentId: editingStudent.student_id,
           ...values,
@@ -407,7 +407,7 @@ const StudentComponent = () => {
       }
 
       const response = await axios.post(
-        "http://13.233.33.133:3001/api/student/createStudent",
+        "http://localhost:3001/api/student/createStudent",
         values,
         {
           headers: {
@@ -459,7 +459,7 @@ const StudentComponent = () => {
       setAssignLoading(true);
       setError(null);
       const response = await axios.post(
-        "http://13.233.33.133:3001/api/student/assignStudentToCourse",
+        "http://localhost:3001/api/student/assignStudentToCourse",
         {
           studentId: selectedStudent.student_id,
           courseId: selectedCourse,
@@ -500,7 +500,7 @@ const StudentComponent = () => {
     try {
       setError(null);
       const response = await fetch(
-        "http://13.233.33.133:3001/api/student/deleteStudent",
+        "http://localhost:3001/api/student/deleteStudent",
         {
           method: "POST",
           headers: {

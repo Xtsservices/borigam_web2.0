@@ -114,7 +114,7 @@ const StudentCompletedTest = () => {
   const fetchCompletedTests = async () => {
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/studentdashbaord/getStudentTestStatus",
+        "http://localhost:3001/api/studentdashbaord/getStudentTestStatus",
         {
           method: "GET",
           headers: {
@@ -174,7 +174,7 @@ const StudentCompletedTest = () => {
     }
     try {
       const response = await fetch(
-        "http://13.233.33.133:3001/api/course/getCourses",
+        "http://localhost:3001/api/course/getCourses",
         {
           method: "GET",
           headers: {
@@ -205,7 +205,7 @@ const StudentCompletedTest = () => {
       setAnswers([]);
 
       const response = await fetch(
-        `http://13.233.33.133:3001/api/testsubmission/submitFinalResult?test_id=${test_id}`,
+        `http://localhost:3001/api/testsubmission/submitFinalResult?test_id=${test_id}`,
         {
           method: "GET",
           headers: {

@@ -54,7 +54,7 @@ const CollageHeader = ({ title, subtitle = "INSTITUTION" }: AppHeaderProps) => {
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://13.233.33.133:3001/api/users/myprofile",
+          "http://localhost:3001/api/users/myprofile",
           {
             headers: { token: token || "" },
           }
@@ -92,7 +92,7 @@ const CollageHeader = ({ title, subtitle = "INSTITUTION" }: AppHeaderProps) => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        "http://13.233.33.133:3001/api/users/changePassword",
+        "http://localhost:3001/api/users/changePassword",
         {
           currentPassword: values.currentPassword,
           newPassword: values.newPassword,

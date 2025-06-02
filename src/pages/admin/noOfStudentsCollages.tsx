@@ -21,7 +21,7 @@ const CollageStudents = () => {
     const fetchStudents = async () => {
       try {
         const response = await fetch(
-          "http://13.233.33.133:3001/api/student/getAllStudents?collegeId=1",
+          "http://localhost:3001/api/student/getAllStudents?collegeId=1",
           {
             headers: {
               "Content-Type": "application/json",

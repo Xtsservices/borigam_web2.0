@@ -3,7 +3,7 @@ import axios from "axios";
 
 
 export const login = async (email: string, password: string) => {
-    const response = await axios.post("http://13.233.33.133:3001/api/users/login", {
+    const response = await axios.post("http://localhost:3001/api/users/login", {
       email,
       password
     });
