@@ -35,7 +35,7 @@ const AddQuestions = () => {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [questionText, setQuestionText] = useState<string>("");
-    const [explanation, setExplanation] = useState<string>("");
+  const [explanation, setExplanation] = useState<string>("");
 
   const [questionType, setQuestionType] = useState<string>("");
   const [options, setOptions] = useState<QuestionOption[]>([
@@ -93,7 +93,6 @@ const AddQuestions = () => {
         prev.map((opt, i) => ({ ...opt, is_correct: i === index }))
       );
     } else if (questionType === "multiple_choice") {
-      // Updated
       setOptions((prev) =>
         prev.map((opt, i) =>
           i === index ? { ...opt, is_correct: isCorrect } : opt
@@ -112,8 +111,15 @@ const AddQuestions = () => {
         { option_text: "", is_correct: false },
         { option_text: "", is_correct: false },
       ]);
+      setTextAnswer(""); // Clear text answer when switching to option-based questions
     } else {
-      setTextAnswer("");
+      // Clear options when switching to text question
+      setOptions([
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+      ]);
     }
   };
 
@@ -140,6 +146,12 @@ const AddQuestions = () => {
       }
     }
 
+    // Validation for text questions
+    if (questionType === "text" && !textAnswer.trim()) {
+      message.error("Please provide an expected answer for text questions.");
+      return false;
+    }
+
     return true;
   };
 
@@ -155,43 +167,43 @@ const AddQuestions = () => {
       questionType === "multiple_choice"
         ? "multiple_choice"
         : questionType.toLowerCase().replace(" ", "_")
-    ); // Updated
+    );
     formData.append("course_id", (selectedCourseId ?? "").toString());
     formData.append("total_marks", totalMarks.toString());
     formData.append("negative_marks", negativeMarks.toString());
+    formData.append("explanation", explanation);
 
     if (questionType === "text") {
       formData.append("correct_answer", JSON.stringify({ textAnswer }));
-      formData.append("options", JSON.stringify([]));
+      // Don't append options field at all for text questions
     } else {
-      const optionsData = options.map((option) => ({
+      // Only process options for radio and multiple_choice questions
+      const validOptions = options.filter(option => option.option_text.trim() !== "");
+      const optionsData = validOptions.map((option) => ({
         option_text: option.option_text,
         is_correct: option.is_correct,
       }));
       formData.append("options", JSON.stringify(optionsData));
 
-      const imageOptions: any = options
+      // Handle option images only for non-text questions
+      const imageOptions = validOptions
         .map((option) => option.image)
         .filter((image) => image instanceof File);
 
-        console.log("imageOptions", imageOptions);
+      console.log("imageOptions", imageOptions);
    
-        if (imageOptions.length > 0) {
-          imageOptions.forEach((image: File, index: number) => {
-            formData.append(`imageOption${index + 1}`, image as File);
-          });
-        }
-
+      if (imageOptions.length > 0) {
+        imageOptions.forEach((image: File, index: number) => {
+          formData.append(`imageOption${index + 1}`, image as File);
+        });
+      }
     }
+
     if (questionImageFile) {
       formData.append("image", questionImageFile);
     }
 
-
-   formData.append("explanation", explanation);
-
     console.log("Form Data:", formData);
-
 
     try {
       const response = await fetch(
@@ -204,6 +216,8 @@ const AddQuestions = () => {
           body: formData,
         }
       );
+
+      window.location.reload()
 
       if (!response.ok) throw new Error("Failed to submit question");
 
@@ -225,11 +239,11 @@ const AddQuestions = () => {
       setTotalMarks(1);
       setNegativeMarks(0);
       setTextAnswer("");
+      setExplanation("");
     } catch (error) {
       console.error("Error submitting question:", error);
       message.error("Failed to add question.");
     }
-    // window.location.reload();
   };
 
   const handlePreSubmit = () => {
@@ -385,7 +399,7 @@ const AddQuestions = () => {
           )}
 
           {questionType === "text" && (
-            <Form.Item label="Expected Answer (for reference):">
+            <Form.Item label="Expected Answer (for reference):" required>
               <TextArea
                 rows={4}
                 value={textAnswer}
@@ -395,12 +409,12 @@ const AddQuestions = () => {
             </Form.Item>
           )}
 
-          <Form.Item label="Explaination:(Optional)" >
+          <Form.Item label="Explanation (Optional)">
             <TextArea
               rows={4}
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
-              placeholder="Enter your Explaination"
+              placeholder="Enter your explanation"
             />
           </Form.Item>
 
