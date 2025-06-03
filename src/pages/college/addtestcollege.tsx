@@ -23,6 +23,7 @@ const { Option } = Select;
 interface OptionType {
   option_id: number;
   option_text: string;
+  image?: string; // Added image support for options
   is_correct?: boolean;
 }
 
@@ -54,7 +55,7 @@ interface Batch {
 }
 
 const addtestcollege = () => {
-  const {  } = useParams();
+  const { } = useParams();
   const navigate = useNavigate();
   const [, setAllQuestions] = useState<Question[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
@@ -168,6 +169,10 @@ const addtestcollege = () => {
   };
 
   const handleSubmit = async () => {
+    if (!testName) {
+      message.error("Please enter a test name");
+      return;
+    }
     if (!testType) {
       message.error("Please select a test duration");
       return;
@@ -406,27 +411,56 @@ const addtestcollege = () => {
                       />
                     )}
 
-                    {Array.isArray(question.options) &&
-                      question.options.map((option) => (
-                        <p
-                          style={{
-                            marginLeft: "20px",
-                            fontSize: "15px",
-                            fontWeight: option.is_correct ? "bold" : "normal",
-                            color: option.is_correct ? "#52c41a" : "inherit",
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                          key={option.option_id}
-                        >
-                          {option.option_text}
-                          {option.is_correct && (
-                            <Tag color="success" style={{ marginLeft: 8 }}>
-                              Correct
-                            </Tag>
-                          )}
-                        </p>
-                      ))}
+                    {/* Updated options rendering with image support */}
+                    <div style={{ marginLeft: "20px", marginTop: "10px" }}>
+                      {Array.isArray(question.options) &&
+                        question.options.map((option) => (
+                          <div
+                            key={option.option_id}
+                            style={{
+                              marginBottom: "10px",
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: "10px",
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <p
+                                style={{
+                                  fontSize: "15px",
+                                  fontWeight: option.is_correct ? "bold" : "normal",
+                                  color: option.is_correct ? "#52c41a" : "inherit",
+                                  margin: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                              >
+                                {option.option_text}
+                                {option.is_correct && (
+                                  <Tag color="success">Correct</Tag>
+                                )}
+                              </p>
+                              
+                              {/* Display option image if available */}
+                              {option.image && (
+                                <img
+                                  src={option.image}
+                                  alt={`Option ${option.option_id}`}
+                                  style={{
+                                    width: "150px",
+                                    height: "150px",
+                                    objectFit: "cover",
+                                    marginTop: "8px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #d9d9d9",
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                   <div
                     style={{

@@ -28,7 +28,7 @@ interface Course {
 interface QuestionOption {
   option_text: string;
   is_correct: boolean;
-  image?: File | null;
+  image?: File | string | null;
 }
 
 const AddQuestionsCollege = () => {
@@ -84,7 +84,7 @@ const AddQuestionsCollege = () => {
     );
   };
 
-  const handleOptionImageChange = (index: number, file: File | null) => {
+  const handleOptionImageChange = (index: number, file: File | string | null) => {
     setOptions((prev) =>
       prev.map((opt, i) => (i === index ? { ...opt, image: file } : opt))
     );
@@ -106,6 +106,7 @@ const AddQuestionsCollege = () => {
 
   const handleQuestionTypeChange = (type: string) => {
     setQuestionType(type);
+    // Reset options when question type changes
     if (type !== "text") {
       setOptions([
         { option_text: "", is_correct: false },
@@ -113,8 +114,15 @@ const AddQuestionsCollege = () => {
         { option_text: "", is_correct: false },
         { option_text: "", is_correct: false },
       ]);
+      setTextAnswer(""); // Clear text answer when switching to option-based questions
     } else {
-      setTextAnswer("");
+      // Clear options when switching to text question
+      setOptions([
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+        { option_text: "", is_correct: false },
+      ]);
     }
   };
 
@@ -132,12 +140,19 @@ const AddQuestionsCollege = () => {
       return false;
     }
 
+    // Validation for radio and multiple_choice questions
     if (questionType === "radio" || questionType === "multiple_choice") {
       const hasCorrectOption = options.some((option) => option.is_correct);
       if (!hasCorrectOption) {
         message.warning("Mark at least one option as correct answer.");
         return false;
       }
+    }
+
+    // Validation for text questions
+    if (questionType === "text" && !textAnswer.trim()) {
+      message.error("Please provide an expected answer for text questions.");
+      return false;
     }
 
     return true;
@@ -159,21 +174,27 @@ const AddQuestionsCollege = () => {
     formData.append("course_id", (selectedCourseId ?? "").toString());
     formData.append("total_marks", totalMarks.toString());
     formData.append("negative_marks", negativeMarks.toString());
+    formData.append("explanation", explanation);
 
     if (questionType === "text") {
       formData.append("correct_answer", JSON.stringify({ textAnswer }));
-      formData.append("options", JSON.stringify([]));
+      // Don't append options field at all for text questions
     } else {
-      const optionsData = options.map((option) => ({
+      // Only process options for radio and multiple_choice questions
+      const validOptions = options.filter(option => option.option_text.trim() !== "");
+      const optionsData = validOptions.map((option) => ({
         option_text: option.option_text,
         is_correct: option.is_correct,
       }));
       formData.append("options", JSON.stringify(optionsData));
 
-      const imageOptions: any = options
+      // Handle option images only for non-text questions
+      const imageOptions = validOptions
         .map((option) => option.image)
         .filter((image) => image instanceof File);
 
+      console.log("imageOptions", imageOptions);
+   
       if (imageOptions.length > 0) {
         imageOptions.forEach((image: File, index: number) => {
           formData.append(`imageOption${index + 1}`, image as File);
@@ -185,12 +206,11 @@ const AddQuestionsCollege = () => {
       formData.append("image", questionImageFile);
     }
 
-    // formData.append("explanation", explanation);
+    console.log("Form Data:", formData);
 
     try {
       const response = await fetch(
         "http://13.233.33.133:3001/api/question/createQuestion",
-        // 
         {
           method: "POST",
           headers: {
@@ -199,6 +219,8 @@ const AddQuestionsCollege = () => {
           body: formData,
         }
       );
+
+      window.location.reload()
 
       if (!response.ok) throw new Error("Failed to submit question");
 
@@ -220,6 +242,7 @@ const AddQuestionsCollege = () => {
       setTotalMarks(1);
       setNegativeMarks(0);
       setTextAnswer("");
+      setExplanation("");
 
       // Navigate back to college dashboard
       navigate(`/college/dashboard`);
@@ -245,7 +268,6 @@ const AddQuestionsCollege = () => {
             name="course"
             rules={[{ required: true }]}
           >
-
             <Select
               onChange={(value) => {
                 const selectedCourse = courses.find(
@@ -371,9 +393,24 @@ const AddQuestionsCollege = () => {
                     >
                       <Button icon={<UploadOutlined />}>Upload Image</Button>
                       {option.image && (
-                        <span style={{ marginLeft: 8 }}>
-                          {option.image.name}
-                        </span>
+                        <div style={{ marginTop: 8 }}>
+                          <span style={{ marginRight: 8 }}>
+                            {typeof option.image === 'string' ? 'Image uploaded' : option.image.name}
+                          </span>
+                          {typeof option.image === 'string' && (
+                            <img 
+                              src={option.image} 
+                              alt={`Option ${index + 1}`}
+                              style={{ 
+                                maxWidth: '200px', 
+                                maxHeight: '100px', 
+                                objectFit: 'contain',
+                                display: 'block',
+                                marginTop: '4px'
+                              }}
+                            />
+                          )}
+                        </div>
                       )}
                     </Upload>
                   </Form.Item>
@@ -383,7 +420,7 @@ const AddQuestionsCollege = () => {
           )}
 
           {questionType === "text" && (
-            <Form.Item label="Expected Answer (for reference):">
+            <Form.Item label="Expected Answer (for reference):" required>
               <TextArea
                 rows={4}
                 value={textAnswer}
@@ -393,12 +430,12 @@ const AddQuestionsCollege = () => {
             </Form.Item>
           )}
 
-          <Form.Item label="Explaination (Optional) :">
+          <Form.Item label="Explanation (Optional)">
             <TextArea
               rows={4}
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
-              placeholder="Enter your Explaination"
+              placeholder="Enter your explanation"
             />
           </Form.Item>
 
