@@ -63,6 +63,7 @@ interface ApiQuestion {
     option_text: string;
   }>;
   submitted_options: number[];
+  submitted_text?: string; // Added this property
   status: string;
   start_time: string;
 }
@@ -182,33 +183,41 @@ const TestScreen: React.FC = () => {
         const restoredAnswers: { [key: number]: SelectedAnswer } = {};
 
         apiData.questions.forEach((apiQuestion: ApiQuestion) => {
-          if (apiQuestion.status === "answered" && apiQuestion.submitted_options.length > 0) {
+          if (apiQuestion.status === "answered") {
             answeredQuestionIds.push(apiQuestion.question_id);
-            
+            console.log('111', apiQuestion.question_id, apiQuestion.submitted_options, apiQuestion.submitted_text);
             // Restore the selected answers
-            if (apiQuestion.submitted_options.length === 1) {
+            if (apiQuestion.submitted_text) {
+              // Text-based answer
+              
+              restoredAnswers[apiQuestion.question_id] = {
+                text: apiQuestion.submitted_text,
+                optionId: null,
+                optionIds: undefined,
+              };
+            } else if (apiQuestion.submitted_options.length === 1) {
               // Single choice
               restoredAnswers[apiQuestion.question_id] = {
                 optionId: apiQuestion.submitted_options[0],
-                text: null
+                text: null,
               };
             } else if (apiQuestion.submitted_options.length > 1) {
               // Multiple choice
               restoredAnswers[apiQuestion.question_id] = {
                 optionIds: apiQuestion.submitted_options,
                 optionId: null,
-                text: null
+                text: null,
               };
             }
           }
         });
 
         setAnsweredQuestions(answeredQuestionIds);
-        
+
         // Merge with existing selectedAnswers
-        setSelectedAnswers(prev => ({
+        setSelectedAnswers((prev) => ({
           ...prev,
-          ...restoredAnswers
+          ...restoredAnswers,
         }));
 
         console.log("Restored answered questions:", answeredQuestionIds);
@@ -216,7 +225,7 @@ const TestScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Failed to load test state from API:", error);
-      
+
       // If the endpoint doesn't exist (404), try alternative approach
       if (error.response?.status === 404) {
         console.log("Endpoint not found, trying alternative approach...");

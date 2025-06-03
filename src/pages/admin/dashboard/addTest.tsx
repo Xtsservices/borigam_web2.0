@@ -79,6 +79,7 @@ const AddTest = () => {
   const fetchQuestions = async (courseId: number | null) => {
     if (!courseId) {
       setFilteredQuestions([]);
+      setAllQuestions([]);
       return;
     }
 
@@ -97,11 +98,25 @@ const AddTest = () => {
       if (!response.ok) throw new Error("Failed to fetch questions");
 
       const data = await response.json();
+
+      // Check if no data found
+      if (data.data.message === "No data found." || !data.data || data.data.length === 0) {
+        setAllQuestions([]);
+        setFilteredQuestions([]);
+        message.info("No questions found for this course");
+        return;
+      }
+
       setAllQuestions(data.data);
       setFilteredQuestions(data.data);
+      console.log("Fetched Questions:", data.data);
+
     } catch (error) {
       console.error("Error fetching questions:", error);
       message.error("Failed to fetch questions");
+      // Clear questions on error as well
+      setAllQuestions([]);
+      setFilteredQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -161,8 +176,10 @@ const AddTest = () => {
 
   const handleCourseChange = (value: number) => {
     setSelectedCourse(value);
+    setSelectedQuestions([]); // Clear selected questions
+    setFilteredQuestions([]); // Clear current questions immediately
+    setAllQuestions([]); // Clear all questions
     fetchQuestions(value);
-    setSelectedQuestions([]);
   };
 
   const handleSubmit = async () => {
@@ -428,7 +445,7 @@ const AddTest = () => {
                                   <Tag color="success">Correct</Tag>
                                 )}
                               </p>
-                              
+
                               {/* Display option image if available */}
                               {option.image && (
                                 <img
