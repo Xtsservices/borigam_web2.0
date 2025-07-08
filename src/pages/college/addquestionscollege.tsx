@@ -40,6 +40,7 @@ const AddQuestionsCollege = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [questionText, setQuestionText] = useState<string>("");
   const [explanation, setExplanation] = useState<string>("");
+
   const [questionType, setQuestionType] = useState<string>("");
   const [options, setOptions] = useState<QuestionOption[]>([
     { option_text: "", is_correct: false },
@@ -106,7 +107,6 @@ const AddQuestionsCollege = () => {
 
   const handleQuestionTypeChange = (type: string) => {
     setQuestionType(type);
-    // Reset options when question type changes
     if (type !== "text") {
       setOptions([
         { option_text: "", is_correct: false },
@@ -114,9 +114,8 @@ const AddQuestionsCollege = () => {
         { option_text: "", is_correct: false },
         { option_text: "", is_correct: false },
       ]);
-      setTextAnswer(""); // Clear text answer when switching to option-based questions
+      setTextAnswer(""); 
     } else {
-      // Clear options when switching to text question
       setOptions([
         { option_text: "", is_correct: false },
         { option_text: "", is_correct: false },
@@ -243,7 +242,6 @@ const AddQuestionsCollege = () => {
       setNegativeMarks(0);
       setTextAnswer("");
       setExplanation("");
-
       // Navigate back to college dashboard
       navigate(`/college/dashboard`);
     } catch (error) {
@@ -354,7 +352,8 @@ const AddQuestionsCollege = () => {
               {options.map((option, index) => (
                 <div key={index} style={{ marginBottom: 16 }}>
                   <Form.Item label={`Option ${index + 1}`}>
-                    <Input
+                    <TextArea
+                      rows={3}
                       value={option.option_text}
                       onChange={(e) =>
                         handleOptionChange(index, e.target.value)

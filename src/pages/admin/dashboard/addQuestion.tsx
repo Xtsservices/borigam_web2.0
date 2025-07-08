@@ -348,7 +348,8 @@ const AddQuestions = () => {
               {options.map((option, index) => (
                 <div key={index} style={{ marginBottom: 16 }}>
                   <Form.Item label={`Option ${index + 1}`}>
-                    <Input
+                    <TextArea
+                      rows={3}
                       value={option.option_text}
                       onChange={(e) =>
                         handleOptionChange(index, e.target.value)
