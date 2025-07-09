@@ -178,7 +178,9 @@ const AddQuestions = () => {
       // Don't append options field at all for text questions
     } else {
       // Only process options for radio and multiple_choice questions
-      const validOptions = options.filter(option => option.option_text.trim() !== "");
+      const validOptions = options.filter(
+        (option) => option.option_text.trim() !== ""
+      );
       const optionsData = validOptions.map((option) => ({
         option_text: option.option_text,
         is_correct: option.is_correct,
@@ -191,7 +193,7 @@ const AddQuestions = () => {
         .filter((image) => image instanceof File);
 
       console.log("imageOptions", imageOptions);
-   
+
       if (imageOptions.length > 0) {
         imageOptions.forEach((image: File, index: number) => {
           formData.append(`imageOption${index + 1}`, image as File);
@@ -217,7 +219,7 @@ const AddQuestions = () => {
         }
       );
 
-      window.location.reload()
+      window.location.reload();
 
       if (!response.ok) throw new Error("Failed to submit question");
 
@@ -280,16 +282,20 @@ const AddQuestions = () => {
               ))}
             </Select>
           </Form.Item>
-
           <Form.Item label="Question:" required>
             <TextArea
-              rows={4}
+              rows={6} // Increased from 4 to 8 for larger display
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="Enter your question"
+              placeholder="Enter your question here..."
+              style={{
+                minHeight: "140px",
+                fontSize: "14px",
+                fontFamily: "monospace, sans-serif",
+                resize: "vertical",
+              }}
             />
           </Form.Item>
-
           <Form.Item label="Upload Question Image (optional)">
             <Upload
               beforeUpload={beforeUpload}
@@ -306,7 +312,6 @@ const AddQuestions = () => {
               )}
             </Upload>
           </Form.Item>
-
           <Form.Item
             label="Select Question Type:"
             name="questionType"
@@ -324,7 +329,6 @@ const AddQuestions = () => {
               ))}
             </Select>
           </Form.Item>
-
           <Form.Item label="Total Marks" required>
             <InputNumber
               min={0.01}
@@ -333,7 +337,6 @@ const AddQuestions = () => {
               onChange={(value) => setTotalMarks(Number(value) || 1)}
             />
           </Form.Item>
-
           <Form.Item label="Negative Marks">
             <InputNumber
               min={0}
@@ -342,7 +345,6 @@ const AddQuestions = () => {
               onChange={(value) => setNegativeMarks(Number(value) || 0)}
             />
           </Form.Item>
-
           {(questionType === "radio" || questionType === "multiple_choice") && (
             <>
               {options.map((option, index) => (
@@ -355,6 +357,12 @@ const AddQuestions = () => {
                         handleOptionChange(index, e.target.value)
                       }
                       placeholder={`Enter option ${index + 1}`}
+                      style={{
+                        minHeight: "70px",
+                        fontSize: "10px",
+                        fontFamily: "monospace, sans-serif",
+                        resize: "vertical",
+                      }}
                     />
                   </Form.Item>
                   <Form.Item>
@@ -398,7 +406,6 @@ const AddQuestions = () => {
               ))}
             </>
           )}
-
           {questionType === "text" && (
             <Form.Item label="Expected Answer (for reference):" required>
               <TextArea
@@ -409,16 +416,20 @@ const AddQuestions = () => {
               />
             </Form.Item>
           )}
-
           <Form.Item label="Explanation (Optional)">
             <TextArea
               rows={4}
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               placeholder="Enter your explanation"
+              style={{
+                minHeight: "70px",
+                fontSize: "10px",
+                fontFamily: "monospace, sans-serif",
+                resize: "vertical",
+              }}
             />
           </Form.Item>
-
           <Button type="primary" className="mt-4" onClick={handlePreSubmit}>
             Submit
           </Button>

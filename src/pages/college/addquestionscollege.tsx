@@ -177,10 +177,10 @@ const AddQuestionsCollege = () => {
 
     if (questionType === "text") {
       formData.append("correct_answer", JSON.stringify({ textAnswer }));
-      // Don't append options field at all for text questions
     } else {
-      // Only process options for radio and multiple_choice questions
-      const validOptions = options.filter(option => option.option_text.trim() !== "");
+      const validOptions = options.filter(
+        (option) => option.option_text.trim() !== ""
+      );
       const optionsData = validOptions.map((option) => ({
         option_text: option.option_text,
         is_correct: option.is_correct,
@@ -287,10 +287,16 @@ const AddQuestionsCollege = () => {
 
           <Form.Item label="Question:" required>
             <TextArea
-              rows={4}
+              rows={6}
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
-              placeholder="Enter your question"
+              placeholder="Enter your question here.."
+              style={{
+                minHeight: "140px",
+                fontSize: "14px",
+                fontFamily: "monospace, sans-serif",
+                resize: "vertical",
+              }}
             />
           </Form.Item>
 
@@ -359,6 +365,13 @@ const AddQuestionsCollege = () => {
                         handleOptionChange(index, e.target.value)
                       }
                       placeholder={`Enter option ${index + 1}`}
+                      style={{
+                        minHeight: "70px",
+                        fontSize: "10px",
+                        fontFamily: "monospace, sans-serif",
+                        resize: "vertical",
+                      }}
+                      
                     />
                   </Form.Item>
                   <Form.Item>
@@ -435,6 +448,12 @@ const AddQuestionsCollege = () => {
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
               placeholder="Enter your explanation"
+              style={{
+                minHeight: "70px",
+                fontSize: "10px",
+                fontFamily: "monospace, sans-serif",
+                resize: "vertical",
+              }}
             />
           </Form.Item>
 
