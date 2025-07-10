@@ -12,7 +12,6 @@ import {
 } from "antd";
 import {
   UserOutlined,
-  CheckOutlined,
   EditOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
@@ -138,11 +137,11 @@ const CollageHeader = ({ title, subtitle = "INSTITUTION" }: AppHeaderProps) => {
       disabled: true,
     },
     { type: "divider" },
-    {
-      key: "edit-profile",
-      icon: <CheckOutlined />,
-      label: "Edit Profile",
-    },
+    // {
+    //   key: "edit-profile",
+    //   icon: <CheckOutlined />,
+    //   label: "Edit Profile",
+    // },
     ...(userProfile?.change_password === true
       ? [
           {

@@ -12,7 +12,6 @@ import {
 } from "antd";
 import {
   UserOutlined,
-  CheckOutlined,
   EditOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
@@ -140,11 +139,11 @@ const StudentAppHeader = ({
       disabled: true,
     },
     { type: "divider" },
-    {
-      key: "edit-profile",
-      icon: <CheckOutlined />,
-      label: "Edit Profile",
-    },
+    // {
+    //   key: "edit-profile",
+    //   icon: <CheckOutlined />,
+    //   label: "Edit Profile",
+    // },
     ...(userProfile?.change_password === true
       ? [
           {
